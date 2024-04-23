@@ -1,0 +1,209 @@
+---
+title: "Project"
+output: html_notebook
+---
+### For R beginners
+New chunk *Ctrl+Alt+I*
+
+Execute chunk *Ctrl+Shift+Enter*
+
+Execute all chunks *Ctrl+Alt+R*
+
+HTML preview *Ctrl+Shift+K*
+
+```{r}
+# Library preparations
+library(readr)
+library(dplyr)
+library(tidyverse)
+```
+
+```{r}
+# Data Import
+data <- read.csv("~/4year/2semester/dtII/CSVs/HEIs.csv",
+                 colClasses = c(tweet_id = "character"))
+
+# Modifying created_at type so that attribute can be used more easily 
+data$created_at <- as.POSIXct(data$created_at,
+                              format= "%Y-%m-%dT%H:%M:%S", tz="UTC")
+
+#View(data)
+summary(data)
+```
+
+```{r}
+# View of how many entries each HEI has
+number_interactions <- data %>%
+              group_by(id) %>% summarise(count = n())
+
+number_interactions
+```
+
+```{r}
+# Since complutense only has 1 entry we can't learn anything from it, so we removed it
+data <- data[data$id != "complutense.csv", ]
+
+# For now we'll be only looking at tweets
+data_tweets <- data[data$type == "Tweet", ]
+
+number_tweets <- data_tweets %>%
+              group_by(id) %>% summarise(count = n())
+
+number_tweets
+```
+
+# Creation of tables that contain earliest post, latest post, frequency(day/week), how many while vacation and academic year
+
+```{r}
+# Function to calculate average posts
+average_tweets <- function(timeframe = "days"){
+  # Calculation of the timeframe between earliest and latest post for each ID
+  date_range <- data_tweets %>%
+    group_by(id) %>%
+    summarise(min_date = min(created_at),
+              max_date = max(created_at)) %>%
+    mutate(num_days = as.numeric(difftime(max_date, min_date, units = timeframe)))
+  
+  # Naming the column respecting the timeframe
+  column_name <- paste0("avg_tweets_per_", timeframe)
+  
+  # Calculation of the number of tweets per day for each ID
+  tweets_per_timeframe <- number_tweets %>%
+    left_join(date_range, by = "id") %>%
+    mutate(!!column_name := count / num_days)
+  
+  print(tweets_per_timeframe)
+  return(tweets_per_timeframe)
+}
+
+tweets_per_day <- average_tweets()
+tweets_per_week <- average_tweets(timeframe = "weeks")
+```
+
+
+
+
+```{r}
+# Define the intervals of time for academic year
+intervals <- list(
+  interval1 = as.POSIXct(c("2022-08-31", "2022-12-15")),
+  interval2 = as.POSIXct(c("2023-01-04", "2023-04-01")),
+  interval3 = as.POSIXct(c("2023-04-14", "2023-06-15"))
+)
+
+# Function to check if a date falls within a given interval and apply Boolean
+check_interval <- function(date) {
+  for (i in 1:length(intervals)) {
+    interval_start <- intervals[[i]][1]
+    interval_end <- intervals[[i]][2]
+    if (date >= interval_start & date <= interval_end) {
+      return(TRUE)
+    }
+  }
+  return(FALSE)
+}
+
+data_tweets$academic_year <- sapply(data_tweets$created_at, check_interval)
+#print(data_tweets)
+```
+
+```{r}
+# Function to count number of tweets and average per day
+analyze_tweets <- function(academic_year_filter = TRUE) {
+  # Filtering the data based on the academic_year_filter
+  filtered_data <- data_tweets %>%
+    filter(academic_year == academic_year_filter)
+  
+  # Count of days for each HEI
+  unique_days <- filtered_data %>%
+    group_by(id) %>%
+    summarise(unique_days = n_distinct(as.Date(created_at)))
+  
+  # Count of tweets for each id
+  number_tweets_boolean <- filtered_data %>%
+    group_by(id) %>%
+    summarise(count = n())
+  
+  # Naming the column respecting the time period
+  year <- ifelse(academic_year_filter, "academic_time", "vacation_time")
+  column_name <- paste0("avg_tweets_in_", year)
+  
+  # Combination of data and calculation of average posts per day
+  combined_data <- left_join(unique_days, number_tweets_boolean, by = "id")
+  combined_data <- combined_data %>%
+    mutate(!!column_name := count / unique_days)
+  
+  print(combined_data)
+  return(combined_data)
+}
+
+data_tweets_academic <- analyze_tweets()
+data_tweets_vacations <- analyze_tweets(academic_year_filter = FALSE)
+```
+
+```{r}
+# Creating new table that contains a new column for the day of the week
+data_tweets_days <- data_tweets %>%
+  mutate(day_of_week = weekdays(created_at))
+
+# Selecting only the id, created_at, and day_of_week columns for the new table
+data_tweets_days <- data_tweets_days %>%
+  select(id, created_at, day_of_week)
+
+print(data_tweets_days)
+```
+
+```{r}
+# Grouping by id and day_of_week, then counting the number of tweets
+number_tweets_days <- data_tweets_days %>%
+  group_by(id, day_of_week) %>%
+  summarise(count = n())
+
+print(number_tweets_days)
+```
+
+```{r}
+# Finding the HEI with the lowest count of tweets per day
+lowest_count <- number_tweets_days %>%
+  group_by(day_of_week) %>%
+  slice_min(order_by = count) %>%
+  select(day_of_week, id, count)
+
+# Same but highest count of tweets per day
+highest_count <- number_tweets_days %>%
+  group_by(day_of_week) %>%
+  slice_max(order_by = count) %>%
+  select(day_of_week, id, count)
+
+# Combine the results
+high_low_HEI <- bind_rows(lowest_count, highest_count) %>%
+  arrange(day_of_week)
+
+print(high_low_HEI)
+```
+
+```{r}
+# Table containing views, likes, retweets and replys for each media type for each HEI
+types_of_tweets <- data_tweets %>%
+              group_by(id, media_type) %>%
+              summarise(count = n(),
+                        total_views = sum(view_count, na.rm = TRUE),
+                        total_likes = sum(favorite_count, na.rm = TRUE),
+                        total_retweets = sum(retweet_count, na.rm = TRUE),
+                        total_replys = sum(reply_count, na.rm = TRUE))
+                        
+print(types_of_tweets)                        
+```
+
+```{r}
+# Table with averages of views, likes, retweets and replys
+types_of_tweets_per_tweet <- types_of_tweets %>%
+                        group_by(id, media_type) %>%
+                        summarise(avg_views = mean(total_views / count),
+                                  avg_likes = mean(total_likes / count),
+                                  avg_retweets = mean(total_retweets / count),
+                                  avg_replys = mean(total_replys / count))
+
+print(types_of_tweets_per_tweet)
+```
+

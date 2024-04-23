@@ -1,0 +1,111 @@
+---
+title: "Graph of Slides"
+output: html_notebook
+---
+### For R beginners
+New chunk *Ctrl+Alt+I*
+
+Execute chunk *Ctrl+Shift+Enter*
+
+Execute all chunks *Ctrl+Alt+R*
+
+HTML preview *Ctrl+Shift+K*
+
+```{r}
+library(igraph)
+
+#Code applies to slide 24
+
+# Creation of graph step-by-step
+g <- make_graph(c("B","A",
+                  "B","C",
+                  "B","E",
+                  "E","D",
+                  "D","C",
+                  "C","D",
+                  "D","B",
+                  "F","H",
+                  "H","G",
+                  "G","H"),
+                 directed = T)
+
+# Finding the connected components
+wcc <- components(g, mode="weak")
+wcc
+scc <- components(g, mode="strong")
+scc
+
+# Define colors for plotting
+colors <- rainbow(10)
+V(g)$color <- colors[scc$membership]
+
+# Set the vertex size for visualization
+V(g)$size <- 20
+
+# Different colors represent different connected group
+plot(g)
+
+# Computing the shortest path for selected pair of nodes
+# Output should include both vertices and the edges
+sp <- shortest_paths(g, from="D", to="A", output="both")
+sp
+
+# Defining colors for plotting
+# Initially all vertices are white and all edges are gray
+V(g)$color <- "white"
+E(g)$color <- "gray"
+plot(g)
+
+# Highlighting the shortest path
+V(g)[sp$vpath[[1]]]$color <- "red"
+E(g)[sp$epath[[1]]]$color <- "red"
+plot(g)
+
+# Checking out the pairwise shortest path lenghts
+#distances(g)
+# using mode "out" to follow link direction for each vertex
+distances(g, mode="out")
+
+# Computing the graph diameter
+d <- diameter(g, directed=TRUE, unconnected=TRUE, weights=NULL)
+d
+
+# Computing the clique number of a graph, ie: the size of the largest clique in the graph
+n_clique <- clique_num(g)
+n_clique
+
+# Get the largest clique
+l_clique <- largest_cliques(g)
+l_clique
+
+# Get cliques by size
+k3 <- cliques(g, min=3, max=5)
+k3
+
+colors <- rainbow(3)
+E(g)$color <- "gray"
+
+# for function is soft blocking the code
+for (i in 1:length(k3)){
+  V(g)$color <- "white"
+  V(g)[k3[[i]]]$color <- colors[i]
+  plot(g)
+  readline()
+}
+```
+
+```{r}
+# Degree centrality
+degree(g,V(g), mode="total")
+degree(g,V(g), mode="in")
+degree(g,V(g), mode="out")
+
+# Other centrality measures
+betweenness(g, V(g), directed=TRUE)
+closeness(g, V(g), mode="total")
+
+# Eigenvector and PageRank
+evcent(g, scale=TRUE)$vector
+page_rank(g, vids=V(g), directed=TRUE, damping=0.85)$vector
+```
+

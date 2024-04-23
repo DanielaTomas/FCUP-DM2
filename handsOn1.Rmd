@@ -1,0 +1,207 @@
+---
+title: "Hands On 1: Association Rules"
+output: html_notebook
+---
+### For R beginners
+New chunk *Ctrl+Alt+I*
+
+Execute chunk *Ctrl+Shift+Enter*
+
+Execute all chunks *Ctrl+Alt+R*
+
+HTML preview *Ctrl+Shift+K*
+
+# 1 Association Rules
+
+1. Load the packages arules, arulesViz and the dataset Groceries from the package arules which contains 1 month of real-world point-of-sale transaction data from a typical local grocery.
+
+```{r}
+library(arules)
+library(arulesViz)
+library(tidyverse)
+data(Groceries)
+```
+
+```{r}
+# a) Type Groceries on the R prompt. What does it return? Use the function class to inspect the type of data set.
+class(Groceries)
+```
+
+```{r}
+# b) Use the function summary to get more information on the data set.
+summary(Groceries)
+```
+
+```{r}
+# c) Use the function size on the data set. What information does it return?
+head(size(Groceries))
+```
+
+```{r}
+# d) Use the function inspect to see the first five transactions.
+inspect(Groceries[1:5])
+```
+
+```{r}
+# e) Are there any duplicated transactions? Use the function unique or duplicated.
+length(which(duplicated(Groceries)))
+```
+
+```{r}
+# f) Use the function itemFrequency to see the relative frequency of each item.
+head(itemFrequency(Groceries))
+```
+
+```{r}
+# g) Using the function itemFrequencyPlot, plot the top 5 more frequent items.
+itemFrequencyPlot(Groceries, topN = 5)
+```
+
+```{r}
+# h) Using the same function itemFrequencyPlot, plot the items that have a support value of at least 0.1. How many are there?
+itemFrequencyPlot(Groceries, support = 0.1)
+```
+
+```{r}
+# i) Using function apriori, and without generating any rules, obtain the frequent itemsets for a minimum support of 0.01. What is the class of the object returned? How many frequent itemsets were found?
+fsets <- apriori(Groceries, parameter = list(supp = 0.01, target = "frequent itemsets"))
+
+class(fsets)
+```
+
+```{r}
+# j) Inspect the 5 most frequent itemsets. What’s their size?
+inspect(sort(fsets)[1:5])
+```
+
+```{r}
+# k) From the frequent itemsets obtained, select the subset of closed frequent itemsets and the subset of maximal frequent itemsets. What can you conclude?
+fsets[is.closed(fsets)]
+
+fsets[is.maximal(fsets)]
+```
+
+```{r}
+# l) Use the function apriori to generate association rules from the Groceries data set. What is the class of the returned object? How many rules were generated?
+rules <- apriori(Groceries)
+```
+
+```{r}
+# m) Change the values of minimum support and minimum confidence and see how does that affect the number of rules generated.
+rules <- apriori(Groceries, parameter = list(supp = 0.01, conf = 0.5))
+```
+
+```{r}
+# n) Obtain the association rules with minsup=0.01 and minconf=0.25. Using the functions summary, quality, plot and inspect acquire more information on the generated rules.
+rules <- apriori(Groceries, parameter = list(supp = 0.01, conf = 0.25))
+summary(rules)
+inspect(rules[1:5])
+```
+
+```{r}
+# o) Select the rules with a lift value above 2. Use the function subset for that.
+rules.sub <- subset(rules, subset = lift > 2)
+inspect(rules.sub[1:5])
+```
+
+```{r}
+# p) Using one instruction only, select the rules that have lift value above 2 and the items “whole milk” or “yogurt” on the consequent. Inspect the selected rules by decreasing order of their lift value.
+rules.sub <- subset(rules, subset = rhs %in% c("yogurt", "whole milk") & lift > 2)
+rules.sort <- sort(rules.sub, by = "lift")
+inspect(rules.sort[1:5])
+
+plot(rules.sub)
+```
+
+2 Read the csv file of German Credit dataset into a data frame in R. This data set has the record of 1000 persons who took a credit by a bank.
+
+```{r}
+df <- read_csv("~/4year/2semester/dtII/CSVs/german_credit.csv")
+```
+
+```{r}
+# a) Remove the first attribute from the data frame, it is just an identifier for each record.
+df <- df %>%
+    select(-default)
+```
+
+```{r}
+# b) Try to convert the data frame into a transactions data set using the function as. What do you obtain?
+dfT <- as(df, "transactions")
+```
+
+```{r}
+# c) Use the function discretizeDF to discretize the numerical attributes according to the following:
+#    • duration in month: 4 equal-with intervals with labels “short”,”med-short”,”med-long”,”long”;
+#    • credit amount: 4 equal-with intervals with labels ”small”,”med-small”,”med-high”,”high”;
+#    • age: 4 equal-with intervals with labels ”young adult”,”adult”,”senior”,”golden”.
+#    • to the rest of numerical attributes, simply use the function as.factor
+df <- df %>%
+    mutate_if(is.character, as.factor)
+
+df <- df %>%
+    discretizeDF(methods = list(duration_in_month = list(method = "interval", 4,
+        labels = c("short", "med-short", "med-long", "long")), credit_amount = list(method = "interval",
+        4, labels = c("small", "med-small", "med-high", "high")), age = list(method = "interval",
+        4, labels = c("young adult", "adult", "senior", "golden"))), default = list(method = "interval"))
+```
+
+```{r}
+# d) Convert the data frame into a data set of transactions. What to you obtain? Use the function itemInfo to see what each item represents.
+dfT <- as(df, "transactions")
+
+item_dfT <- itemInfo(dfT)
+head(item_dfT)
+```
+
+```{r}
+# e) Run apriori to obtain the association rules from the data set. Plot the obtained rules.
+rules <- apriori(dfT)
+plot(rules)
+```
+
+```{r}
+# f) Select the rules with confidence equal to 1. What does those rules tell you?
+rules.conf1 <- subset(rules, confidence == 1)
+```
+
+```{r}
+# g) Run apriori again, but this time imposing a minimum confidence equal to 0.6, minimum length of 2 and focusing only on attributes sex, age, job, housing and purpose of credit.
+myItems <- subset(item_dfT,variables %in% c("age","personal_status_sex","job","housing","purpose"))$labels
+
+rules <- apriori(dfT,
+                  parameter = list(conf=0.6,minlen=2),
+                  appearance = list(both = myItems,
+                  default="none"))
+```
+
+```{r}
+# h) Find the rules below. What do their quality values tell you?
+#    {job=skilled employee / official} => {housing=own}
+#    {housing=own} => {job=skilled employee / official}
+
+# same lift and same support different confidence [19] {job=skilled employee / official} => {housing=own} 0.452 0.7174603 1.0062557 [20] {housing=own} => {job=skilled employee / official} 0.452 0.6339411 1.0062557 housing = own appears more often in transactions that contain job = skilled
+```
+
+```{r}
+# i) Run apriori to obtain rules that relate the purpose of credit with age, job and housing. Impose a minimum support of 0.05, minimum confidence of 0.25 and a minimum length of 2. Could you propose a marketing campaign from the obtained rules?
+my.lhs <- subset(item_dfT, variables %in% c("age", "job", "housing"))$labels
+my.rhs <- subset(item_dfT, variables == "purpose")$labels
+rules1 <- apriori(dfT, parameter = list(confidence = 0.25, minlen = 2, support = 0.05),
+    appearance = list(lhs = my.lhs, rhs = my.rhs, default = "none"))
+
+# promote credit for domestic appliances among young adults or adults with skilled job and own housing
+```
+
+```{r}
+# j) Plot the previous set of rules using the method graph and graph with itemsets. What do these graphs tell you?
+plot(rules1, method = "graph")
+
+plot(rules1, method = "graph", control = list(type = "itemsets"))
+```
+
+```{r}
+# k) Plot the previous set of rules using the method grouped.
+plot(rules1, method = "grouped")
+```
+

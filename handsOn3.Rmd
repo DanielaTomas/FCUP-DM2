@@ -1,0 +1,198 @@
+---
+title: "Hands On 3: Web Structure Mining"
+output: html_notebook
+---
+### For R beginners
+New chunk *Ctrl+Alt+I*
+
+Execute chunk *Ctrl+Shift+Enter*
+
+Execute all chunks *Ctrl+Alt+R*
+
+HTML preview *Ctrl+Shift+K*
+
+# 3.1 Link analysis
+
+```{r}
+# Preparations
+library(igraph)
+```
+
+1. Using the function make_graph(), with directed=F, build the undirected version of the networkin Figure 1 and answer the following questions.
+
+```{r}
+gU <- make_graph(c("a","d",
+                   "a","f",
+                   "b","f",
+                   "c","b",
+                   "e","f",
+                   "f","c",
+                   "f","d"),
+                 directed = F)
+```
+
+
+```{r}
+# a) Plot the obtained graph.
+plot(gU)
+```
+
+```{r}
+# b) Obtain the set of vertices and edges.
+V(gU)
+E(gU)
+```
+
+```{r}
+# c) Obtain the adjacency matrix.
+gU[]
+```
+
+```{r}
+# d) Obtain the centrality degree, closeness and betweenness of each node.
+degree(gU)
+closeness(gU)
+betweenness(gU)
+```
+
+2. Using the function make_graph(), build the network in Figure 1 and answer the following questions.
+
+```{r}
+gD <- make_graph(c("a","d",
+                   "a","f",
+                   "b","f",
+                   "c","b",
+                   "e","f",
+                   "f","c",
+                   "f","d"),
+                 directed = T)
+```
+
+```{r}
+# a) Plot the obtained graph.
+plot(gD)
+```
+
+```{r}
+# b) Obtain the set of vertices and edges.
+V(gD)
+E(gD)
+```
+
+```{r}
+# c) Obtain the adjacency matrix.
+gD[]
+```
+
+```{r}
+# d) Obtain the centrality degree, closeness and betweenness of each node.
+degree(gD)
+closeness(gD)
+betweenness(gD)
+```
+
+```{r}
+# e) Plot the same graph, but with different layouts.
+l <- layout_in_circle(gD)
+plot(gD,layout=l)
+
+l <- layout_as_star(gD)
+plot(gD,layout=l)
+
+l <- layout_as_tree(gD)
+plot(gD,layout=l)
+
+plot(gD,layout=layout_nicely(gD))
+```
+
+```{r}
+# f) Obtain the list of nodes by decreasing order of their hub scores.
+hs <- hub_score(gD)
+sort(hs$vector, decreasing = T)
+```
+
+```{r}
+# g) Obtain the list of nodes by decreasing order of their authorities scores.
+as <- authority_score(gD)
+sort(as$vector, decreasing = T)
+```
+
+```{r}
+# h) Obtain the list of nodes by decreasing order of their page rank scores with a damping factor of 0.9.
+pr <- page_rank(gD, damping=0.9)
+sort(pr$vector, decreasing = T)
+```
+
+# 3.2 Communities
+
+3. Load the network “Zachary”, which consists of a social network of friendships between 34 members ofa karate club at a US university in the 1970s. Answer the following questions.
+
+```{r}
+# Preparation
+karate <- make_graph("Zachary")
+```
+
+
+```{r}
+# a) Plot the obtained graph.
+plot(karate)
+```
+
+```{r}
+# b) Apply the Girvan-Newman algorithm to detect communities, through the function cluster_edge_betweenness().
+ceb <- cluster_edge_betweenness(karate)
+ceb
+# cef is used more often with high density networks, careful since it uses more computer power
+```
+
+```{r}
+# c) Plot the result of detected communities over the graph.
+plot(ceb,karate)
+```
+
+
+```{r}
+# d) What do the functions sizes() and membership() give you?
+sizes(ceb)
+membership(ceb)
+```
+
+```{r}
+# e) Plot the result of obtained communities as a hclust object.
+plot(as.hclust(ceb))
+```
+
+```{r}
+# f) Apply one of the modularity maximization techniques to detect communities, through the function cluster_fast_greedy().
+cfg <- cluster_fast_greedy(karate)
+cfg
+# cfg is used more often with large networks
+```
+
+```{r}
+# g) Explore the obtained results.
+plot(cfg, karate)
+plot(cfg, karate,
+     layout=layout_as_star(karate))
+
+sizes(cfg)
+membership(cfg)
+hc <- as.hclust(cfg)
+plot(hc)
+
+# Displaying the separation between communities
+rect.hclust(hc,3)
+```
+
+4. Detect and explore the communities obtained by the two above algorithms regarding the network of exercise 1.
+
+```{r}
+# Preparing display for two columns 
+par(mfrow=c(1,2))
+
+plot(cluster_edge_betweenness(gU), gU,
+     main="Edge Betweenness")
+
+plot(cluster_fast_greedy(gU), gU,
+     main="Fast Greedy")
+```

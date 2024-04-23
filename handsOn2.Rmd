@@ -1,0 +1,452 @@
+---
+title: "Hands On 2: Web Usage Mining"
+output: html_notebook
+---
+### For R beginners
+New chunk *Ctrl+Alt+I*
+
+Execute chunk *Ctrl+Shift+Enter*
+
+Execute all chunks *Ctrl+Alt+R*
+
+HTML preview *Ctrl+Shift+K*
+
+# 2.1 Simple Recommendation Strategies
+
+```{r}
+# Preparations
+library(dplyr)
+df <- read.csv("~/4year/2semester/dtII/CSVs/log.csv")
+View(df)
+```
+
+## Most Visited Pages
+1. Recommend the 3 most visited pages. For that purpose:
+
+```{r}
+# a) inspect how many times each page was visited.
+df %>% group_by(PAGE) %>% count()
+```
+
+```{r}
+# b) sort the pages by decreasing number of visits.
+df %>% group_by(PAGE) %>% count() %>% arrange(desc(n))
+
+# different method with tally function that does the same as count and arrange combined
+# df %>% group_by(PAGE) %>% tally(sort = TRUE)
+```
+
+```{r}
+# c) obtain the top 3 pages for recommendation.
+# pull() extracts a single column from the data frame and makes it a vector
+df %>% group_by(PAGE) %>% tally(sort = TRUE) %>% top_n(3) %>% pull(PAGE)
+```
+
+## Using Clustering Results
+2. Suppose we want to form two clusters of users, according to the pages they have visited. For that purpose:
+
+```{r}
+# a) start by transforming the log access data into a matrix that has on each row a user and for each user the information on his visits to each page; this can be obtained with the table() function.
+dat <- table(df$USER, df$PAGE)
+dat
+```
+
+```{r}
+# b) use the function dist() to obtain a distance matrix with the Euclidean distance between the users.
+dm <- dist(dat)
+dm
+```
+
+```{r}
+# c) check for alternatives in the help page of dist().
+# others "maximun", "manhattan", "minkowski", "jaccard"
+```
+
+```{r}
+# Package shown by professor in class
+library(recommenderlab)
+summary(pr_DB)
+
+dm <- dist(dat, method = "jaccard")
+```
+
+```{r}
+# d) use the function hclust() with the distance matrix to obtain an agglomerative clustering model of this data.
+c1 <- hclust(dm)
+```
+
+```{r}
+# e) visualize the obtained dendogram with function plot().
+plot(c1)
+```
+
+```{r}
+# f) visualize the dendogram again, but now with option hang=-0.1.
+plot(c1, hang=-0.1)
+```
+
+```{r}
+# g) use the function cutree() to ”cut” the hierarchical clustering in just two clusters; inspect the cluster membership of each user.
+cm <- cutree(c1,2)
+cm
+```
+
+```{r}
+# h) use the function rect.hclust() to draw the previous solution in the dendogram.
+plot(c1, hang=-0.1)
+rect.hclust(c1,2)
+```
+
+3. Recommend the top 2 pages for users of cluster 1. For that purpose:
+
+```{r}
+# a) inspect what were the pages visited by users in cluster 1.
+
+# with mutate we can add the cluster to each user belongs to the df table
+dd <- mutate(df, Cluster=cm[df$USER])
+dd
+
+filter(dd,Cluster==1) %>% select(PAGE)
+```
+
+```{r}
+# b) inspect how many times each of these pages was visited.
+filter(dd,Cluster==1) %>% select(PAGE) %>% group_by(PAGE) %>% count()
+```
+
+```{r}
+# c) sort the pages by decreasing order of visits.
+filter(dd,Cluster==1) %>% select(PAGE) %>% group_by(PAGE) %>% tally(sort=TRUE)
+```
+
+```{r}
+# d) obtain the top 2 pages for recommendation.
+filter(dd,Cluster==1) %>% select(PAGE) %>% group_by(PAGE) %>% tally(sort=TRUE) %>% top_n(2) %>% pull(PAGE)
+```
+
+4. Recommend the top 2 pages for users of cluster 2.
+
+```{r}
+filter(dd,Cluster==2) %>% select(PAGE) %>% group_by(PAGE) %>% tally(sort=TRUE) %>% top_n(2) %>% pull(PAGE)
+```
+
+5. Using the same clustering results, recommend the top 3 pages for user u2. From those top pages you should remove the pages that the user has already visited.
+
+```{r}
+# First, get the cluster of user2
+cluster.u2 <-
+dd %>% filter(USER=="u2") %>% select(Cluster) %>% head(1) %>% pull()
+cluster.u2
+
+# Second, get top3 pages from cluster for user2
+rec.u2 <-
+  filter(dd,Cluster==cluster.u2) %>% group_by(PAGE) %>% tally(sort=TRUE) %>% top_n(3) %>% select(PAGE)
+rec.u2
+
+# Third, get pages already visited by user2
+seen.u2 <-
+  dd %>% filter(USER=="u2") %>% select(PAGE)
+seen.u2
+
+# Finally, show what isn't in both groups
+anti_join(rec.u2, seen.u2)
+```
+
+# 2.2 Recommendation using Association Rules
+
+Load the package recommenderlab and read the log1.csv file (it is an expansion of log.csv with u7 and u8).
+
+```{r}
+# Preparations
+library(recommenderlab)
+library(readr)
+log <- read_csv("~/4year/2semester/dtII/CSVs/log1.csv", col_types=list(col_factor(), col_factor()))
+View(log)
+```
+
+6. Obtain a recommendation model using association rules with the first 6 users.
+
+```{r}
+# a) start by coercing the data frame with user-page access information from the log1.csv file to a binaryRatingMatrix (brm).
+brm <- as(as.data.frame(log), "binaryRatingMatrix")
+brm
+
+# in order to check out what we have in the data frame
+getData.frame(brm)
+```
+
+```{r}
+# b) select the information on the first 6 users to be used as training offline data and save it to a new variable (e.g brm_offline).
+brm_offline <- brm[1:6,]
+```
+
+```{r}
+# c) inspect the content of brm_offline; use the function getRatingMatrix and getData.frame.
+getData.frame(brm_offline)
+getRatingMatrix(brm_offline)
+# the best way lo 'look' at rating matrices
+inspect(getRatingMatrix(brm_offline))
+```
+
+```{r}
+# d) apply the functions rowCounts and colCounts to brm_offline; what information does it give you?
+r <- rowCounts(brm_offline)
+r
+c <- colCounts(brm_offline)
+c
+```
+
+```{r}
+# e) apply the function image to brm_offline.
+image(brm_offline)
+```
+
+```{r}
+# f) obtain the recommender model based on association rules with the instruction: modelAR <- Recommender(brm_offline,"AR").
+modelAR <- Recommender(brm_offline, "AR") # AR -> Association Rules
+modelAR
+```
+
+```{r}
+# g) apply the function getModel to the obtained model and then inspect the association rules that compose the model.
+getModel(modelAR)
+
+# generation of rules
+rules <- getModel(modelAR)$rule_base
+inspect(rules)
+```
+
+7. Suppose that u7 enters the system and becomes an active user. Deploy the recommendation model for him/her.
+
+```{r}
+# Getting old values of user 7
+brm_u7 <- brm[7,]
+# Checking the contents
+getData.frame(brm_u7)
+```
+
+```{r}
+# a) apply the predict function with the model and the rating matrix of the user, such that only the top 2 recommendations are given as output.
+recsAR <- predict(modelAR, brm_u7, n=2)
+recsAR
+```
+
+```{r}
+# b) apply the function getList to the obtained predictions to inspect the actual recommendations; which are they?
+getList(recsAR)
+```
+
+```{r}
+# c) to comprove the obtained recommendations, filter the rules which have been triggered for this active user.
+r <- subset(rules, lhs %in% c("C", "F"))
+inspect(r)
+```
+
+8. Now suppose that u8 enters the system and becomes an active user. Deploy the recommendation model for him/her. Be critical regarding the results.
+
+```{r}
+brm_u8 <- brm[8,]
+getData.frame(brm_u8)
+
+recs8AR <- predict(modelAR, brm_u8, n=2)
+recs8AR
+
+getList(recs8AR)
+```
+
+9. Explore the types of recommendation models available for binary rating matrices.
+
+```{r}
+recommenderRegistry$get_entries(dataType="binaryRatingMatrix")
+```
+
+10. Make the top 2 recommendations to u7 and u8 using the popularity of the pages, instead of association rules. Try to understand the obtained recommendations.
+
+```{r}
+modelPop <- Recommender(brm_offline, "POPULAR")
+
+recsPop <- predict(modelPop, brm[7:8,], n=2)
+recsPop
+getList(recsPop)
+```
+
+# 2.3 Recommendation using Collaborative Filtering
+
+## Binary Rating Data
+
+Considering the same binary rating matrix of the previous exercise brm_offline, build a recommendation model based on collaborative filtering.
+
+11. Start by using the function similarity to build the similarity cosine matrix (only for first 6 users).
+
+```{r}
+# a) a user-based approach.
+sCos_users <- similarity(brm_offline, method="cosine")
+sCos_users
+```
+
+```{r}
+# b) an item-based approach.
+sCos_items <- similarity(brm_offline, method ="cosine", which="items")
+sCos_items
+```
+
+12. Obtain the top 2 recommendations with user-based CF and item-based CF methods using the cosine similarity with a neighborhood of size 3, for:
+
+```{r}
+# model creation for user-based and item-based collaborative filtering
+modelUBCF <- Recommender(brm_offline, 'UBCF', parameter=list(method="cosine" ,nn=3))
+getModel(modelUBCF)
+
+modelIBCF <- Recommender(brm_offline, 'IBCF', parameter=list(method="cosine" ,k=3))
+getModel(modelIBCF)
+```
+
+```{r}
+# a) active user u8
+recsUBCF <- predict(modelUBCF, brm_u8, n=2)
+getList(recsUBCF)
+
+recsIBCF <- predict(modelIBCF, brm_u8, n=2)
+getList(recsIBCF)
+```
+
+```{r}
+# b) active user u7
+recsUBCF <- predict(modelUBCF, brm_u7, n=2)
+getList(recsUBCF)
+
+recsIBCF <- predict(modelIBCF, brm_u7, n=2)
+getList(recsIBCF)
+```
+
+## Non-Binary Rating Data
+
+13. Explore the types of recommendation models available for real rating matrices
+
+```{r}
+recommenderRegistry$get_entries(dataType ="realRatingMatrix")
+```
+
+14. Read the file log1Ratings.csv, containing information on the ratings given to web pages by a set of users, into a data frame in R. Build and deploy the following collaborative filtering recommendation models using, again, the first 6 users for training:
+
+```{r}
+logR <- read_csv("~/4year/2semester/dtII/CSVs/log1Ratings.csv",
+                      col_types=list(col_factor(),
+                                     col_factor(),
+                                     col_integer()))
+
+rrm <- as(as.data.frame(logR), "realRatingMatrix")
+
+getRatingMatrix(rrm)
+image(rrm)
+
+# using only first 6 users
+rrm_offline <- rrm[1:6,]
+getRatingMatrix(rrm_offline)
+```
+
+```{r}
+# a) a user-based CF approach with two neighbors to predict the ratings of users u7 and u8
+
+# model creation
+modelUBCF_R <- Recommender(rrm_offline, 'UBCF', parameter=list(nn=2))
+getModel(modelUBCF_R)
+
+# applying model to user 7 and 8
+recsUBCF_R <- predict(modelUBCF_R, rrm[7,], type="ratings")
+getList(recsUBCF_R)
+
+# user 8 suffers form cold-start(in R named numeric(0) is NA)
+recsUBCF_R <- predict(modelUBCF_R, rrm[8,], type="ratings")
+getList(recsUBCF_R)
+```
+
+```{r}
+# b) an item-based CF approach with two neighbors to predict the ratings of users u7 and u8
+
+# model creation
+modelIBCF_R <- Recommender(rrm_offline, 'IBCF', parameter=list(k=2))
+getModel(modelIBCF_R)
+
+# applying model to user 7 and 8
+recsIBCF_R <- predict(modelIBCF_R, rrm[7,], type="ratings")
+getList(recsIBCF_R)
+
+recsIBCF_R <- predict(modelIBCF_R, rrm[8,], type="ratings")
+getList(recsIBCF_R)
+```
+
+# 2.4 Recommender Systems: Evaluation
+
+15 Considering the log1 binary data, evaluate different recommendation strategies.
+
+```{r}
+log <- read_csv("~/4year/2semester/dtII/CSVs/log1.csv",
+                      col_types=list(col_factor(),
+                                     col_factor()))
+
+brm <- as(as.data.frame(log), "binaryRatingMatrix")
+```
+
+```{r}
+# a) Set the seed to 2021. Use the function evaluationScheme to define an evaluation scheme that splits the data into train and test set (80%-20% proportion) and establishes that 2 items of test cases are already known. In case one or more users do not comply with this setting, you can disregard them.
+set.seed(2021) # for replication purposes
+# error e <- evaluationScheme(brm, method="split", train=0.8, given=2)
+
+# understanding the problem
+rowCounts(brm)
+
+# fix
+brm <- brm[rowCounts(brm)>=2,]
+e <- evaluationScheme(brm, method="split", train=0.8, given=2)
+e
+```
+
+```{r}
+# b) check how the data was split according to the previous evaluation scheme, using the function getData on the evaluation scheme with the argument’s "train", "known" and "unknown".
+inspect(getRatingMatrix(brm))
+
+inspect(getRatingMatrix(getData(e,"train")))
+inspect(getRatingMatrix(getData(e,"known")))
+inspect(getRatingMatrix(getData(e,"unknown")))
+```
+
+```{r}
+# c) Define the list of methods that will be used to obtain the top N recommendations, as follows:
+
+methods <- list(
+    "popular" = list(name="POPULAR", param = NULL), 
+    "user-based CF" = list(name="UBCF", param = NULL),
+    "item-based CF" = list(name="IBCF", param = NULL)
+)
+```
+
+```{r}
+# d) Use the function evaluate with the previously defined evaluation scheme, methods and considering top 1, 3 and 5 recommendations for each of the models.
+results <- evaluate(e, methods,
+                    type="topNList", n=c(1,3,5))
+```
+
+```{r}
+# e) Explore the obtained object.
+avg(results)
+```
+
+```{r}
+# f) Use the function getConfusionMatrix as one of the methods to obtain the corresponding confusion matrices. Be critical regarding the values that are shown.
+getConfusionMatrix(results[["popular"]])
+
+model1 <- Recommender(getData(e,"train"), "POPULAR")
+preds1 <- predict(model1, getData(e,"known"), n=3)
+getList(preds1)
+```
+
+```{r}
+# g) Plot the ROC curves for each of the methods and different values of N. What can you conclude?
+plot(results, annotate="TRUE")
+```
+
+```{r}
+# h) Plot the precision/recall curves for each of the methods and different values of N. What can you conclude?
+plot(results, "prec/rec", annotate=TRUE)
+```
