@@ -207,3 +207,12 @@ types_of_tweets_per_tweet <- types_of_tweets %>%
 print(types_of_tweets_per_tweet)
 ```
 
+```{r}
+unique_hashtags <- data_tweets %>%
+                group_by(id) %>%
+                summarise(count = n(),
+                          unique_hashtags = length(unique(hashtags)))
+
+print(unique_hashtags)
+```
+
