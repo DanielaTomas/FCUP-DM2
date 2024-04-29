@@ -1,0 +1,153 @@
+---
+title: "Hands On 4: Information Retrieval and Text Mining"
+output: html_notebook
+---
+### For R beginners
+New chunk *Ctrl+Alt+I*
+
+Execute chunk *Ctrl+Shift+Enter*
+
+Execute all chunks *Ctrl+Alt+R*
+
+HTML preview *Ctrl+Shift+K*
+
+# 4.1 Information Retrieval
+
+```{r}
+library(tm)
+library(text2vec)
+```
+
+1. Using the functions VectorSource() and Corpus(), start by creating a corpus with three “documents” containing the following text:
+  • “Mining is important for finding gold”
+  • “Classification and regression are data mining”
+  • “Data mining deals with data”
+Then, use the function DocumentTermMatrix() to represent the documents.
+
+```{r}
+# Preparation
+docs <- c("Mining is important for finding gold", "Classification and regression are data mining", "Data mining deals with data")
+vc <- VectorSource(docs)
+corpus <- Corpus(vc)
+dtm <- DocumentTermMatrix(corpus)
+```
+
+
+```{r}
+# a) Use the functions nDocs(), nTerms(), Terms() to get some infomation on the DocumentTermMatrix you have created.
+nDocs(dtm)
+nTerms(dtm)
+Terms(dtm)
+```
+
+```{r}
+# b) If you inspect the DocumentTermMatrix, what information does it give you? What is the document representation model employed by default? If you want to get the complete DocumentTermMatrix, you should use the function as.matrix
+inspect(dtm)
+# full display of terms use
+as.matrix(dtm)
+dtm.tf <- dtm
+```
+
+```{r}
+# c) Use the function weightBin() on the original document term matrix to represent the documents with a vector space model, but with a binary scheme.
+dtm.bin <- weightBin(dtm)
+inspect(dtm.bin)
+```
+
+```{r}
+# d) Use the function weightTfIdf() on the original document term matrix to represent the documents with a vector space model, but with TF-IDF scheme.
+dtm.tfidf <- weightTfIdf(dtm)
+inspect(dtm.tfidf)
+as.matrix(dtm.tfidf)
+```
+
+```{r}
+# e) Did any of the terms get a zero value for all documents? Which ones? What does this tell you about the discriminative power of the term?
+# The term mining appears to have value zero for all documents, since it appears in all documents it finds it useless(it has zero discriptive power).
+```
+
+```{r}
+# f) Analyze the cosine similarity between the three documents, in each weighting scheme. You can use the function sim2 from the package text2vec on each matrix.
+sim2(as.matrix(dtm.bin), method = "cosine")
+sim2(as.matrix(dtm.tf), method = "cosine")
+sim2(as.matrix(dtm.tfidf), method = "cosine")
+```
+
+2. Rank the above documents given the query “data mining” by the cosine similarity of the query to each document:
+
+```{r}
+# Preparations
+cq <- Corpus(VectorSource("data mining"))
+dtmq <- DocumentTermMatrix(cq)
+
+# creation of a matrix with 1 row and all terms in use in the previous existent corpus
+mq <- matrix(0, ncol=nTerms(dtm.tf),
+             dimnames = list("q", Terms(dtm.tf)))
+
+# setting the only row of the query to match the terms in the query
+mq[1,Terms(dtmq)] <- 1
+mq
+
+# Computing the distances
+```
+
+```{r}
+# a) using binary scheme
+sim2(as.matrix(dtm.bin), mq, method = "cosine")
+```
+
+```{r}
+# b) using TF scheme
+sim2(as.matrix(dtm.tf), mq, method = "cosine")
+```
+
+```{r}
+# c) using TF-IDF scheme
+sim2(as.matrix(dtm.tfidf), mq, method = "cosine")
+```
+
+# 4.2 Text Mining
+## Processing steps
+
+3. Let us now use a set of documents which represent news from Reuters news agency, related with crude oil. These documents are available on the tm package and are stored as XML files following the format used by Reuters.
+
+```{r}
+# a) Load the above referred files by executing the following code:
+reut21578 <- system.file("texts", "crude", package = "tm")
+reuters <- VCorpus(DirSource(reut21578),
+                    readerControl = list(reader = readReut21578XMLasPlain))
+```
+
+```{r}
+# b) Inspect the first text of the loaded corpus
+```
+
+```{r}
+# c) Load the package wordcloud to obtain a graphical representation of the terms in the corpus.
+```
+
+```{r}
+# d) Use the function tm_map to apply the following transformations to the texts forming a corpus:
+# • strip white space
+# • convert everything to lowercase
+# • remove english stopwords
+# • obtain words stem (keeping only the “root” of each word)
+# remove punctuation, by taking into account that intra-words contractions and intra-words dashes should be preserved.
+```
+
+```{r}
+# e) Obtain a graphical representation of the frequencies of terms in the transformed corpus. Is it too different from the original representation?
+```
+
+```{r}
+# f) Convert the transformed corpus into a Document Term Matrix and inspect a few entries of the matrix.
+```
+
+```{r}
+# g) Use the function FindFreqTerms for obtaining the terms that occur more than 10 times.
+```
+
+```{r}
+# h) Use the function findAssocs for obtaining the terms with a correlation higher than 0.8 with the term “opec”, which stands for “Organization of the Petroleum Exporting Countries”.
+```
+

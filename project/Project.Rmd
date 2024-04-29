@@ -84,14 +84,14 @@ tweets_per_week <- average_tweets(timeframe = "weeks")
 
 
 ```{r}
-# Define the intervals of time for academic year
+# Defining the intervals of time for the academic year
 intervals <- list(
   interval1 = as.POSIXct(c("2022-08-31", "2022-12-15")),
   interval2 = as.POSIXct(c("2023-01-04", "2023-04-01")),
   interval3 = as.POSIXct(c("2023-04-14", "2023-06-15"))
 )
 
-# Function to check if a date falls within a given interval and apply Boolean
+# Function to check if a date falls within a given interval and apply appropriate Boolean
 check_interval <- function(date) {
   for (i in 1:length(intervals)) {
     interval_start <- intervals[[i]][1]
@@ -208,6 +208,7 @@ print(types_of_tweets_per_tweet)
 ```
 
 ```{r}
+# Table with number of unique hashtags
 unique_hashtags <- data_tweets %>%
                 group_by(id) %>%
                 summarise(count = n(),
