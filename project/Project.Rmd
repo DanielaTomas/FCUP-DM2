@@ -16,6 +16,7 @@ HTML preview *Ctrl+Shift+K*
 library(readr)
 library(dplyr)
 library(tidyverse)
+library(ggplot2)
 ```
 
 ```{r}
@@ -57,7 +58,7 @@ number_tweets
 ```{r}
 # Function to calculate average posts
 average_tweets <- function(timeframe = "days"){
-  # Calculation of the timeframe between earliest and latest post for each ID
+  # Calculation of the timeframe between earliest and latest post for each HEI
   date_range <- data_tweets %>%
     group_by(id) %>%
     summarise(min_date = min(created_at),
@@ -67,7 +68,7 @@ average_tweets <- function(timeframe = "days"){
   # Naming the column respecting the timeframe
   column_name <- paste0("avg_tweets_per_", timeframe)
   
-  # Calculation of the number of tweets per day for each ID
+  # Calculation of the number of tweets per day for each HEI
   tweets_per_timeframe <- number_tweets %>%
     left_join(date_range, by = "id") %>%
     mutate(!!column_name := count / num_days)
@@ -80,8 +81,41 @@ tweets_per_day <- average_tweets()
 tweets_per_week <- average_tweets(timeframe = "weeks")
 ```
 
+```{r}
+# Plotting the average number of tweets per day for each HEI
+barplot(tweets_per_day$avg_tweets_per_days,
+        names.arg = tweets_per_day$id,
+        main = "Average Tweets per Day",
+        xlab = "HEI",
+        ylab = "Average Number of Tweets",
+        ylim = c(0, max(tweets_per_day$avg_tweets_per_days) + 1),
+        las = 2,
+        col = "#3498DB")
 
+# Adding text labels over each bar and aligning it with the center of each bar 
+text(x = barplot(tweets_per_day$avg_tweets_per_days, plot = FALSE),
+     y = tweets_per_day$avg_tweets_per_days,
+     labels = round(tweets_per_day$avg_tweets_per_days, 2),
+     pos = 3)
+```
 
+```{r}
+# Plotting the average number of tweets per week for each HEI
+barplot(tweets_per_week$avg_tweets_per_weeks,
+        names.arg = tweets_per_week$id,
+        main = "Average Tweets per Week",
+        xlab = "HEI",
+        ylab = "Average Number of Tweets",
+        ylim = c(0, max(tweets_per_week$avg_tweets_per_weeks) + 5),
+        las = 2,
+        col = "#E74C3C")
+
+# Adding text labels over each bar and aligning it with the center of each bar
+text(x = barplot(tweets_per_week$avg_tweets_per_weeks, plot = FALSE),
+     y = tweets_per_week$avg_tweets_per_weeks,
+     labels = round(tweets_per_week$avg_tweets_per_weeks, 2),
+     pos = 3)
+```
 
 ```{r}
 # Defining the intervals of time for the academic year
@@ -104,7 +138,19 @@ check_interval <- function(date) {
 }
 
 data_tweets$academic_year <- sapply(data_tweets$created_at, check_interval)
-#print(data_tweets)
+print(data.frame(id = data_tweets$id, academic_year = data_tweets$academic_year))
+```
+
+```{r}
+barplot(table(data_tweets$academic_year),
+        main = "Number of Tweets per Timeframe",
+        xlab = "Time",
+        ylab = "Count",
+        ylim = c(0, max(table(data_tweets$academic_year)) + 1000),
+        names.arg = c("Vacation", "Academic"),
+        col = c("#8E44AD", "#F1C40F"))
+
+text(x = barplot(data_tweets$academic_year, plot = FALSE), y = table(data_tweets$academic_year) + 0.5, labels = table(data_tweets$academic_year), pos = 3)
 ```
 
 ```{r}
@@ -142,6 +188,42 @@ data_tweets_vacations <- analyze_tweets(academic_year_filter = FALSE)
 ```
 
 ```{r}
+# Plotting the average number of tweets during academic time for each HEI
+barplot(data_tweets_academic$avg_tweets_in_academic_time,
+        names.arg = data_tweets_academic$id,
+        main = "Average Tweets during Academic Time",
+        xlab = "HEI",
+        ylab = "Average Number of Tweets",
+        ylim = c(0, max(data_tweets_academic$avg_tweets_in_academic_time) + 5),
+        las = 2,
+        col = "#34495E")
+
+# Adding text labels over each bar and aligning it with the center of each bar
+text(x = barplot(data_tweets_academic$avg_tweets_in_academic_time, plot = FALSE),
+     y = data_tweets_academic$avg_tweets_in_academic_time,
+     labels = round(data_tweets_academic$avg_tweets_in_academic_time, 2),
+     pos = 3)
+```
+
+```{r}
+# Plotting the average number of tweets during vacation time for each HEI
+barplot(data_tweets_vacations$avg_tweets_in_vacation_time,
+        names.arg = data_tweets_vacations$id,
+        main = "Average Tweets during Vacation Time",
+        xlab = "HEI",
+        ylab = "Average Number of Tweets",
+        ylim = c(0, max(data_tweets_vacations$avg_tweets_in_vacation_time) + 5),
+        las = 2,
+        col = "#D35400")
+
+# Adding text labels over each bar and aligning it with the center of each bar
+text(x = barplot(data_tweets_vacations$avg_tweets_in_vacation_time, plot = FALSE),
+     y = data_tweets_vacations$avg_tweets_in_vacation_time,
+     labels = round(data_tweets_vacations$avg_tweets_in_vacation_time, 2),
+     pos = 3)
+```
+
+```{r}
 # Creating new table that contains a new column for the day of the week
 data_tweets_days <- data_tweets %>%
   mutate(day_of_week = weekdays(created_at))
@@ -158,6 +240,17 @@ print(data_tweets_days)
 number_tweets_days <- data_tweets_days %>%
   group_by(id, day_of_week) %>%
   summarise(count = n())
+
+# Grouping by id, day_of_week and day created at, then counting the number of tweets
+number_tweets_per_day <- data_tweets_days %>%
+  mutate(created_date = as.Date(created_at)) %>%
+  group_by(id, day_of_week, created_date) %>%
+  summarise(count = n())
+
+# Finding for each HEI the average count of tweets per day
+average_number_tweets_per_day <- number_tweets_per_day %>%
+  group_by(id, day_of_week) %>%
+  summarise(average_count = mean(count))
 
 print(number_tweets_days)
 ```
@@ -182,6 +275,46 @@ high_low_HEI <- bind_rows(lowest_count, highest_count) %>%
 print(high_low_HEI)
 ```
 
+```{r}
+# Plotting the lowest and highest count of tweets per day for each day of the week
+ggplot(high_low_HEI, aes(x = day_of_week, y = count, fill = id)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = count),
+            position = position_dodge(width = 0.9),
+            vjust = -0.5,
+            size = 3) +
+  labs(title = "Lowest and Highest Count of Tweets per Day for Each Day of the Week",
+       x = "Day of the Week", y = "Count") +
+  scale_fill_manual(values = rainbow(length(unique(high_low_HEI$id)))) +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+```
+
+```{r}
+# Finding the HEI with lowest and highest averaged count of tweets per day
+high_low_average_HEIs <- average_number_tweets_per_day %>%
+  group_by(day_of_week) %>%
+  filter(average_count == max(average_count) | average_count == min(average_count)) %>%
+  arrange(day_of_week, ifelse(average_count == min(average_count), average_count, -average_count))
+
+print(high_low_average_HEIs)
+```
+
+```{r}
+# Plotting the highest and lowest average count of tweets per day for each day of the week
+ggplot(high_low_average_HEIs, aes(x = day_of_week, y = average_count, fill = id)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = round(average_count, 2)),
+            position = position_dodge(width = 0.7),
+            vjust = -0.5,
+            size = 3) +
+  labs(title = "Highest and Lowest Average Count of Tweets per Day for Each Day of the Week",
+       x = "Day of the Week", y = "Average Count") +
+  scale_fill_manual(values = rainbow(length(unique(high_low_HEI$id)))) +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+```
+# TODO grafico para este e averages
 ```{r}
 # Table containing views, likes, retweets and replys for each media type for each HEI
 types_of_tweets <- data_tweets %>%
@@ -215,5 +348,23 @@ unique_hashtags <- data_tweets %>%
                           unique_hashtags = length(unique(hashtags)))
 
 print(unique_hashtags)
+```
+
+```{r}
+# Plotting the count of unique hashtags for each HEI
+barplot(unique_hashtags$unique_hashtags,
+        names.arg = unique_hashtags$id,
+        main = "Unique Hashtags for Each HEI",
+        xlab = "HEI",
+        ylab = "Count of Unique Hashtags",
+        ylim = c(0, max(unique_hashtags$unique_hashtags) + 50),
+        las = 2,
+        col= "#16A085")
+
+# Adding text labels over each bar and aligning it with the center of each bar
+text(x = barplot(unique_hashtags$unique_hashtags, plot = FALSE),
+     y = unique_hashtags$unique_hashtags,
+     labels = round(unique_hashtags$unique_hashtags, 2),
+     pos = 3)
 ```
 
