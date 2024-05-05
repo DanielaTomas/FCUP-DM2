@@ -17,6 +17,7 @@ library(readr)
 library(dplyr)
 library(tidyverse)
 library(ggplot2)
+library(reshape2)
 ```
 
 ```{r}
@@ -366,5 +367,43 @@ text(x = barplot(unique_hashtags$unique_hashtags, plot = FALSE),
      y = unique_hashtags$unique_hashtags,
      labels = round(unique_hashtags$unique_hashtags, 2),
      pos = 3)
+```
+
+```{r}
+# Create column hour from created_at
+data_tweets_days$created_hour <- as.numeric(format(data_tweets_days$created_at, "%H"))
+
+# Function to plot heatmap for various HEIs
+heatmap_maker <- function(target_id = "duke.csv"){
+  # Filtering data for the specific HEI
+  target_data <- data_tweets_days %>%
+    filter(id == target_id)
+  
+  # Grouping by day of the week and hour, and counting the number of tweets
+  tweet_counts <- target_data %>%
+    group_by(day_of_week, created_hour) %>%
+    summarise(num_tweets = n())
+  
+  # Plotting heatmap
+  ggplot(tweet_counts, aes(x = day_of_week, y = created_hour, fill = num_tweets)) +
+    geom_tile() +
+    scale_fill_gradient(low = "white", high = "blue") +
+    labs(title = paste("Tweet Heatmap for", target_id),
+         x = "Day of the week",
+         y = "Hour of the day")
+}
+
+heatmap_maker()
+heatmap_maker("epfl.csv")
+heatmap_maker("goe.csv")
+heatmap_maker("harvard.csv")
+heatmap_maker("leicester.csv")
+heatmap_maker("manchester.csv")
+heatmap_maker("mit.csv")
+heatmap_maker("sb.csv")
+heatmap_maker("stanford.csv")
+heatmap_maker("trinity.csv")
+heatmap_maker("wv.csv")
+heatmap_maker("yale.csv")
 ```
 
