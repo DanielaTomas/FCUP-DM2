@@ -370,6 +370,80 @@ total_stats <- types_of_tweets %>%
 print(total_stats)
 ```
 
+# Function for piechart creation for views, likes and replys 
+
+```{r}
+pie_maker <- function(target_id = "duke.csv"){
+  # Filtering data for the specific HEI
+  hei_data <- types_of_tweets %>%
+    filter(id == target_id)
+  
+  # Calculate total views for each media type for the specific ID
+  hei_media_views <- hei_data %>%
+    group_by(media_type) %>%
+    summarise(total_views = sum(total_views),
+              total_likes = sum(total_likes),
+              total_replys = sum(total_replys))
+  
+  # Calculating the percentage of views for each media type for the specific ID
+  hei_media_views$percentage_view <- hei_media_views$total_views / sum(hei_media_views$total_views) * 100
+  hei_media_views$percentage_like <- hei_media_views$total_likes / sum(hei_media_views$total_likes) * 100
+  hei_media_views$percentage_reply <- hei_media_views$total_replys / sum(hei_media_views$total_replys) * 100
+  
+  # Creating the pie chart for views
+  hei_pie_chart_views <- ggplot(hei_media_views, aes(x = "", y = percentage_view, fill = media_type)) +
+    geom_bar(stat = "identity", width = 1) +
+    coord_polar("y", start = 0) +
+    theme_void() +
+    theme(legend.position = "right") +
+    geom_text(aes(label = paste(media_type, "\n", total_views, "(", round(percentage_view, 1), "%)")), position = position_stack(vjust = 0.5), color = "#FFFFFF") +
+    scale_fill_manual(values = c("no_media" = "#2196F3", "animated_gif" = "#E67E22", "photo" = "#8E44AD", "video" = "#138D75")) +
+    labs(title = paste("Views for each media type -", target_id))
+  
+  # Creating the pie chart for likes
+  hei_pie_chart_likes <- ggplot(hei_media_views, aes(x = "", y = percentage_view, fill = media_type)) +
+    geom_bar(stat = "identity", width = 1) +
+    coord_polar("y", start = 0) +
+    theme_void() +
+    theme(legend.position = "right") +
+    geom_text(aes(label = paste(media_type, "\n", total_views, "(", round(percentage_view, 1), "%)")), position = position_stack(vjust = 0.5), color = "#FFFFFF") +
+    scale_fill_manual(values = c("no_media" = "#E91E63", "animated_gif" = "#4A148C", "photo" = "#90CAF9", "video" = "#00BFA5")) +
+    labs(title = paste("Views for each media type -", target_id))
+  
+  # Creating the pie chart for replys
+  hei_pie_chart_replys <- ggplot(hei_media_views, aes(x = "", y = percentage_view, fill = media_type)) +
+    geom_bar(stat = "identity", width = 1) +
+    coord_polar("y", start = 0) +
+    theme_void() +
+    theme(legend.position = "right") +
+    geom_text(aes(label = paste(media_type, "\n", total_views, "(", round(percentage_view, 1), "%)")), position = position_stack(vjust = 0.5), color = "#FFFFFF") +
+    scale_fill_manual(values = c("no_media" = "#666600", "animated_gif" = "#99CCCC", "photo" = "#9966CC", "video" = "#330000")) +
+    labs(title = paste("Views for each media type -", target_id))
+  
+  # Print the pie charts
+  print(hei_pie_chart_views)
+  print(hei_pie_chart_likes)
+  print(hei_pie_chart_replys)
+}
+```
+
+# Plot of piecharts for each HEI
+
+```{r}
+pie_maker()
+pie_maker("epfl.csv")
+pie_maker("goe.csv")
+pie_maker("harvard.csv")
+pie_maker("leicester.csv")
+pie_maker("manchester.csv")
+pie_maker("mit.csv")
+pie_maker("sb.csv")
+pie_maker("stanford.csv")
+pie_maker("trinity.csv")
+pie_maker("wv.csv")
+pie_maker("yale.csv")
+```
+
 ```{r}
 # Calculation of like_ratio and replys_ratio percentages
 ratios_table <- total_stats %>%
@@ -563,3 +637,10 @@ ggplot(data_tweets_content_metrics, aes(x = id, y = average_num_words)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
+
+# Clusters
+
+```{r}
+
+```
+
