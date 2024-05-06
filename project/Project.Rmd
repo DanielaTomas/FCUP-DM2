@@ -641,6 +641,72 @@ ggplot(data_tweets_content_metrics, aes(x = id, y = average_num_words)) +
 # Clusters
 
 ```{r}
+# Creating table for cluster algorithms
+
+# Joining attribute count (number of tweets) and unique_hashtags (number of unique hashtags) per HEI
+cluster_table <- merge(select(unique_hashtags, id, unique_hashtags), select(number_tweets, id, count), by = "id", all=TRUE)
+
+# Joining attribute avg_tweets_per_days (average of tweets per day) per HEI
+cluster_table <- merge(cluster_table, select(tweets_per_day, id, avg_tweets_per_days), by = "id", all=TRUE)
+
+# Joining attribute avg_tweets_per_weeks (average of tweets per week) per HEI
+cluster_table <- merge(cluster_table, select(tweets_per_week, id, avg_tweets_per_weeks), by = "id", all=TRUE)
+
+# Joining attribute avg_tweets_in_academic_time (average of tweets during academic time) per HEI
+cluster_table <- merge(cluster_table, select(data_tweets_academic, id, avg_tweets_in_academic_time), by = "id", all=TRUE)
+
+# Joining attribute avg_tweets_in_vacation_time (average of tweets during vacation time) per HEI
+cluster_table <- merge(cluster_table, select(data_tweets_vacations, id, avg_tweets_in_vacation_time), by = "id", all=TRUE)
+
+# Joining attribute total_views (total number of views), total_likes (total number of likes) and total_replys (total number of replies) per HEI
+cluster_table <- merge(cluster_table, select(total_stats, id, total_views, total_likes, total_replys), by = "id", all=TRUE)
+
+# Joining attribute like_ratio (ratio of total number of likes) and replys_ratio (ratio of total number of replies) per HEI
+cluster_table <- merge(cluster_table, select(hei_ratios, id, like_ratio, replys_ratio), by = "id", all=TRUE)
+cluster_table <- cluster_table %>%
+  rename(total_like_ratio = like_ratio, 
+         total_replys_ratio = replys_ratio)
+
+# Joining attribute avg_views (average number of views), avg_likes (average number of likes) and avg_replys (average number of replies) per HEI
+cluster_table <- merge(cluster_table, select(total_average_stats, id, avg_views, avg_likes, avg_replys), by = "id", all=TRUE)
+
+# Joining attribute like_ratio (ratio of average number of likes) and replys_ratio (ratio of average number of replies) per HEI
+cluster_table <- merge(cluster_table, select(hei_average_ratios, id, like_ratio, replys_ratio), by = "id", all=TRUE)
+
+print(cluster_table)
+```
+
+```{r}
+# Example of K-means clustering
+library(stats)
+
+# Select the columns you want to use for clustering
+cluster_data <- select(cluster_table, -id)  # Exclude 'id' column
+
+# Scale the data (optional but recommended for K-means)
+scaled_data <- scale(cluster_data)
+
+# Determine the number of clusters (you may need to adjust this)
+num_clusters <- 3
+
+# Perform K-means clustering
+kmeans_result <- kmeans(scaled_data, centers = num_clusters)
+
+# Print the cluster centers
+print(kmeans_result$centers)
+
+# Print the cluster assignments for each data point
+print(kmeans_result$cluster)
+
+```
+
+```{r}
+
+# Merge the cluster assignments with the original data
+cluster_assignments <- data.frame(id = cluster_table$id, cluster = kmeans_result$cluster)
+
+# Print the cluster assignments
+print(cluster_assignments)
 
 ```
 
