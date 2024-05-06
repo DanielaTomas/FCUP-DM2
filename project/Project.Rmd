@@ -2,6 +2,7 @@
 title: "Project"
 output: html_notebook
 ---
+# TODO tratar de NAs
 ### For R beginners
 New chunk *Ctrl+Alt+I*
 
@@ -343,7 +344,8 @@ ggplot(high_low_average_HEIs, aes(x = day_of_week, y = average_count, fill = id)
   theme_minimal() +
   theme(legend.title = element_blank())
 ```
-# TODO grafico para este e averages
+# Views Likes Retweets and Replys
+
 ```{r}
 # Table containing views, likes, retweets and replys for each media type for each HEI
 types_of_tweets <- data_tweets %>%
@@ -358,6 +360,48 @@ print(types_of_tweets)
 ```
 
 ```{r}
+# Grouping by HEI and calculating the total values of views, likes and replys across all media types
+total_stats <- types_of_tweets %>%
+  group_by(id) %>%
+  summarise(total_views = sum(total_views),
+            total_likes = sum(total_likes),
+            total_replys = sum(total_replys))
+
+print(total_stats)
+```
+
+```{r}
+# Calculation of like_ratio and replys_ratio percentages
+ratios_table <- total_stats %>%
+  mutate(like_ratio = total_likes / total_views * 100,
+         replys_ratio = total_replys / total_views * 100)
+
+# Creation of new table with each HEI, like_ratio, and replys_ratio 
+hei_ratios <- ratios_table %>%
+  select(id, like_ratio, replys_ratio) %>%
+  distinct()
+
+print(hei_ratios)
+```
+
+# Plot for like_ratio and replys_ratio for each HEI
+
+```{r}
+ggplot(hei_ratios, aes(x = id)) +
+  geom_bar(aes(y = like_ratio, fill = "Like Ratio"), stat = "identity", position = "dodge") +
+  geom_bar(aes(y = replys_ratio, fill = "Replys Ratio"), stat = "identity", position = "dodge") +
+  geom_text(aes(y = like_ratio, label = round(like_ratio, 2)), vjust = -0.5, position = position_dodge(width = 0.9), size = 3, color = "#000000") +
+  geom_text(aes(y = replys_ratio, label = round(replys_ratio, 2)), vjust = -0.5, position = position_dodge(width = 0.9), size = 3, color = "#FFFFFF") +
+  labs(title = "Like and Replys Ratios by HEI",
+       x = "HEI",
+       y = "Ratio (%)",
+       fill = "Metric") +
+  scale_fill_manual(values = c("Like Ratio" = "#2196F3", "Replys Ratio" = "#F44336")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+```{r}
 # Table with averages of views, likes, retweets and replys
 types_of_tweets_per_tweet <- types_of_tweets %>%
                         group_by(id, media_type) %>%
@@ -367,6 +411,48 @@ types_of_tweets_per_tweet <- types_of_tweets %>%
                                   avg_replys = mean(total_replys / count))
 
 print(types_of_tweets_per_tweet)
+```
+
+```{r}
+# Grouping by HEI and calculating the average values of views, likes and replys across all media types
+total_average_stats <- types_of_tweets_per_tweet %>%
+  group_by(id) %>%
+  summarise(avg_views = sum(avg_views),
+            avg_likes = sum(avg_likes),
+            avg_replys = sum(avg_replys))
+
+print(total_average_stats)
+```
+
+```{r}
+# Calculation of like_ratio and replys_ratio percentages
+ratios_average_table <- total_average_stats %>%
+  mutate(like_ratio = avg_likes / avg_views * 100,
+         replys_ratio = avg_replys / avg_views * 100)
+
+# Creation of new table with each HEI, like_ratio, and replys_ratio 
+hei_average_ratios <- ratios_average_table %>%
+  select(id, like_ratio, replys_ratio) %>%
+  distinct()
+
+print(hei_average_ratios)
+```
+
+# Plot for like_ratio and replys_ratio for each HEI
+
+```{r}
+ggplot(hei_average_ratios, aes(x = id)) +
+  geom_bar(aes(y = like_ratio, fill = "Like Ratio"), stat = "identity", position = "dodge") +
+  geom_bar(aes(y = replys_ratio, fill = "Replys Ratio"), stat = "identity", position = "dodge") +
+  geom_text(aes(y = like_ratio, label = round(like_ratio, 2)), vjust = -0.5, position = position_dodge(width = 0.9), size = 3, color = "#000000") +
+  geom_text(aes(y = replys_ratio, label = round(replys_ratio, 2)), vjust = -0.5, position = position_dodge(width = 0.9), size = 3, color = "#FFFFFF") +
+  labs(title = "Like and Replys Ratios by HEI",
+       x = "HEI",
+       y = "Ratio (%)",
+       fill = "Metric") +
+  scale_fill_manual(values = c("Like Ratio" = "#330066", "Replys Ratio" = "#FF6666")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
 # Hashtags
