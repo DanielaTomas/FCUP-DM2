@@ -20,6 +20,7 @@ library(dplyr)
 library(tidyverse)
 library(ggplot2)
 library(reshape2)
+library(stats)
 ```
 
 # Data Import
@@ -641,6 +642,102 @@ ggplot(data_tweets_content_metrics, aes(x = id, y = average_num_words)) +
 # Clusters
 
 ```{r}
+# Creating table for cluster algorithms
 
+# Joining attribute count (number of tweets) and unique_hashtags (number of unique hashtags) per HEI
+cluster_table <- merge(select(unique_hashtags, id, unique_hashtags), select(number_tweets, id, count), by = "id", all=TRUE)
+
+# Joining attribute avg_tweets_per_days (average of tweets per day) per HEI
+cluster_table <- merge(cluster_table, select(tweets_per_day, id, avg_tweets_per_days), by = "id", all=TRUE)
+
+# Joining attribute avg_tweets_per_weeks (average of tweets per week) per HEI
+cluster_table <- merge(cluster_table, select(tweets_per_week, id, avg_tweets_per_weeks), by = "id", all=TRUE)
+
+# Joining attribute avg_tweets_in_academic_time (average of tweets during academic time) per HEI
+cluster_table <- merge(cluster_table, select(data_tweets_academic, id, avg_tweets_in_academic_time), by = "id", all=TRUE)
+
+# Joining attribute avg_tweets_in_vacation_time (average of tweets during vacation time) per HEI
+cluster_table <- merge(cluster_table, select(data_tweets_vacations, id, avg_tweets_in_vacation_time), by = "id", all=TRUE)
+
+# Joining attribute total_views (total number of views), total_likes (total number of likes) and total_replys (total number of replies) per HEI
+cluster_table <- merge(cluster_table, select(total_stats, id, total_views, total_likes, total_replys), by = "id", all=TRUE)
+
+# Joining attribute like_ratio (ratio of total number of likes) and replys_ratio (ratio of total number of replies) per HEI
+cluster_table <- merge(cluster_table, select(hei_ratios, id, like_ratio, replys_ratio), by = "id", all=TRUE)
+cluster_table <- cluster_table %>%
+  rename(total_like_ratio = like_ratio, 
+         total_replys_ratio = replys_ratio)
+
+# Joining attribute avg_views (average number of views), avg_likes (average number of likes) and avg_replys (average number of replies) per HEI
+cluster_table <- merge(cluster_table, select(total_average_stats, id, avg_views, avg_likes, avg_replys), by = "id", all=TRUE)
+
+# Joining attribute like_ratio (ratio of average number of likes) and replys_ratio (ratio of average number of replies) per HEI
+cluster_table <- merge(cluster_table, select(hei_average_ratios, id, like_ratio, replys_ratio), by = "id", all=TRUE)
+cluster_table <- cluster_table %>%
+  rename(avg_like_ratio = like_ratio, 
+         avg_replys_ratio = replys_ratio)
+
+print(cluster_table)
+```
+
+# Function for cluster method
+
+```{r}
+cluster_maker <- function(seed = 123, num_clusters = 3, table){
+  set.seed(123)
+  
+  # Excluding id column for clustering
+  cluster_data <- select(table, -id)
+  
+  # Scaling the data for kmeans method
+  scaled_data <- scale(cluster_data)
+  
+  kmeans_result <- kmeans(scaled_data, centers = num_clusters)
+  
+  print(kmeans_result$centers)
+  print(kmeans_result$cluster)
+  
+  return(kmeans_result)
+}
+```
+
+# Function to add ids to better visualize results
+
+```{r}
+cluster_id_maker <- function(kmeans_result, table){
+  # Merging the cluster assignments with the original data
+  cluster_assignments <- data.frame(id = table$id, cluster = kmeans_result$cluster)
+
+  print(cluster_assignments)
+  plot(kmeans_result$cluster)
+}
+```
+
+# Three clusters with seed 123
+
+```{r}
+cluster_123_3 <- cluster_maker(table = cluster_table)
+cluster_id_maker(cluster_123_3, table = cluster_table)
+```
+
+# Six clusters with seed 123
+
+```{r}
+cluster_123_6 <- cluster_maker(num_clusters = 6, table = cluster_table)
+cluster_id_maker(cluster_123_6, table = cluster_table)
+```
+
+# Four clusters with seed 4855
+
+```{r}
+cluster_123_3 <- cluster_maker(seed = 4855, num_clusters = 4, table = cluster_table)
+cluster_id_maker(cluster_123_3, table = cluster_table)
+```
+
+# Six clusters with seed 4855
+
+```{r}
+cluster_123_6 <- cluster_maker(seed = 4855, num_clusters = 6, table = cluster_table)
+cluster_id_maker(cluster_123_6, table = cluster_table)
 ```
 
