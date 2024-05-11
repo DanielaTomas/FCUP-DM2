@@ -2,7 +2,9 @@
 title: "Project"
 output: html_notebook
 ---
-# TODO tratar de NAs
+# TODO tratar de NAs e passar tabelas pra csv
+# How to give name to media
+
 ### For R beginners
 New chunk *Ctrl+Alt+I*
 
@@ -50,15 +52,48 @@ number_interactions
 ```{r}
 # Since complutense only has 1 entry we can't learn anything from it, so we removed it
 data <- data[data$id != "complutense.csv", ]
+```
 
-# For now we'll be only looking at tweets
-data_tweets <- data[data$type == "Tweet", ]
-
-number_tweets <- data_tweets %>%
+```{r}
+# Visualization of number all posts, just tweets and just replies
+number_posts <- data %>%
               group_by(id) %>% summarise(count = n())
 
-number_tweets
+number_tweets <- data[data$type == "Tweet", ] %>%
+              group_by(id) %>% summarise(count = n())
+
+number_replies <- data[data$type == "Reply", ] %>%
+              group_by(id) %>% summarise(count = n())
+
+print(number_posts)
+print(number_tweets)
+print(number_replies)
 ```
+
+# Calculating the percentage of tweets and replies based on all posts
+
+```{r}
+# Merging the counts of tweets (count.y) and replies (count) with the count of posts (count.x)
+data_ratio <- merge(number_posts, number_tweets, by = "id", all = TRUE)
+data_ratio <- merge(data_ratio, number_replies, by = "id", all = TRUE)
+
+
+data_ratio$percentage_tweets <- (data_ratio$count.y / data_ratio$count.x) * 100
+data_ratio$percentage_replies <- (data_ratio$count / data_ratio$count.x) * 100
+
+data_ratio <- data_ratio[, c("id", "percentage_tweets", "percentage_replies")]
+
+print(data_ratio)
+```
+
+# For now we'll be only looking at tweets
+
+```{r}
+data_tweets <- data[data$type == "Tweet", ]
+
+data_tweets
+```
+
 
 # Function to calculate average posts
 
@@ -345,33 +380,33 @@ ggplot(high_low_average_HEIs, aes(x = day_of_week, y = average_count, fill = id)
   theme_minimal() +
   theme(legend.title = element_blank())
 ```
-# Views Likes Retweets and Replys
+# Views Likes Retweets and Replies
 
 ```{r}
-# Table containing views, likes, retweets and replys for each media type for each HEI
+# Table containing views, likes, retweets and replies for each media type for each HEI
 types_of_tweets <- data_tweets %>%
               group_by(id, media_type) %>%
               summarise(count = n(),
-                        total_views = sum(view_count, na.rm = TRUE),
-                        total_likes = sum(favorite_count, na.rm = TRUE),
-                        total_retweets = sum(retweet_count, na.rm = TRUE),
-                        total_replys = sum(reply_count, na.rm = TRUE))
+                        views = sum(view_count, na.rm = TRUE),
+                        likes = sum(favorite_count, na.rm = TRUE),
+                        retweets = sum(retweet_count, na.rm = TRUE),
+                        replies = sum(reply_count, na.rm = TRUE))
                         
 print(types_of_tweets)                        
 ```
 
 ```{r}
-# Grouping by HEI and calculating the total values of views, likes and replys across all media types
-total_stats <- types_of_tweets %>%
+# Grouping by HEI and calculating the total values of views, likes and replies across all media types
+total_tweets_stats <- types_of_tweets %>%
   group_by(id) %>%
-  summarise(total_views = sum(total_views),
-            total_likes = sum(total_likes),
-            total_replys = sum(total_replys))
+  summarise(total_views = sum(views),
+            total_likes = sum(likes),
+            total_replies = sum(replies))
 
-print(total_stats)
+print(total_tweets_stats)
 ```
 
-# Function for piechart creation for views, likes and replys 
+# Function for piechart creation for views, likes and replies 
 
 ```{r}
 pie_maker <- function(target_id = "duke.csv"){
@@ -380,19 +415,19 @@ pie_maker <- function(target_id = "duke.csv"){
     filter(id == target_id)
   
   # Calculate total views for each media type for the specific ID
-  hei_media_views <- hei_data %>%
+  hei_media <- hei_data %>%
     group_by(media_type) %>%
-    summarise(total_views = sum(total_views),
-              total_likes = sum(total_likes),
-              total_replys = sum(total_replys))
+    summarise(total_views = sum(views),
+              total_likes = sum(likes),
+              total_replies = sum(replies))
   
   # Calculating the percentage of views for each media type for the specific ID
-  hei_media_views$percentage_view <- hei_media_views$total_views / sum(hei_media_views$total_views) * 100
-  hei_media_views$percentage_like <- hei_media_views$total_likes / sum(hei_media_views$total_likes) * 100
-  hei_media_views$percentage_reply <- hei_media_views$total_replys / sum(hei_media_views$total_replys) * 100
+  hei_media$percentage_view <- hei_media$total_views / sum(hei_media$total_views) * 100
+  hei_media$percentage_like <- hei_media$total_likes / sum(hei_media$total_likes) * 100
+  hei_media$percentage_reply <- hei_media$total_replies / sum(hei_media$total_replies) * 100
   
   # Creating the pie chart for views
-  hei_pie_chart_views <- ggplot(hei_media_views, aes(x = "", y = percentage_view, fill = media_type)) +
+  hei_pie_chart_views <- ggplot(hei_media, aes(x = "", y = percentage_view, fill = media_type)) +
     geom_bar(stat = "identity", width = 1) +
     coord_polar("y", start = 0) +
     theme_void() +
@@ -402,29 +437,29 @@ pie_maker <- function(target_id = "duke.csv"){
     labs(title = paste("Views for each media type -", target_id))
   
   # Creating the pie chart for likes
-  hei_pie_chart_likes <- ggplot(hei_media_views, aes(x = "", y = percentage_view, fill = media_type)) +
+  hei_pie_chart_likes <- ggplot(hei_media, aes(x = "", y = percentage_like, fill = media_type)) +
     geom_bar(stat = "identity", width = 1) +
     coord_polar("y", start = 0) +
     theme_void() +
     theme(legend.position = "right") +
-    geom_text(aes(label = paste(media_type, "\n", total_views, "(", round(percentage_view, 1), "%)")), position = position_stack(vjust = 0.5), color = "#FFFFFF") +
+    geom_text(aes(label = paste(media_type, "\n", total_likes, "(", round(percentage_like, 1), "%)")), position = position_stack(vjust = 0.5), color = "#FFFFFF") +
     scale_fill_manual(values = c("no_media" = "#E91E63", "animated_gif" = "#4A148C", "photo" = "#90CAF9", "video" = "#00BFA5")) +
-    labs(title = paste("Views for each media type -", target_id))
+    labs(title = paste("Likes for each media type -", target_id))
   
-  # Creating the pie chart for replys
-  hei_pie_chart_replys <- ggplot(hei_media_views, aes(x = "", y = percentage_view, fill = media_type)) +
+  # Creating the pie chart for replies
+  hei_pie_chart_replies <- ggplot(hei_media, aes(x = "", y = percentage_reply, fill = media_type)) +
     geom_bar(stat = "identity", width = 1) +
     coord_polar("y", start = 0) +
     theme_void() +
     theme(legend.position = "right") +
-    geom_text(aes(label = paste(media_type, "\n", total_views, "(", round(percentage_view, 1), "%)")), position = position_stack(vjust = 0.5), color = "#FFFFFF") +
+    geom_text(aes(label = paste(media_type, "\n", total_replies, "(", round(percentage_reply, 1), "%)")), position = position_stack(vjust = 0.5), color = "#FFFFFF") +
     scale_fill_manual(values = c("no_media" = "#666600", "animated_gif" = "#99CCCC", "photo" = "#9966CC", "video" = "#330000")) +
-    labs(title = paste("Views for each media type -", target_id))
+    labs(title = paste("Replies for each media type -", target_id))
   
   # Print the pie charts
   print(hei_pie_chart_views)
   print(hei_pie_chart_likes)
-  print(hei_pie_chart_replys)
+  print(hei_pie_chart_replies)
 }
 ```
 
@@ -446,27 +481,27 @@ pie_maker("yale.csv")
 ```
 
 ```{r}
-# Calculation of like_ratio and replys_ratio percentages
-ratios_table <- total_stats %>%
+# Calculation of like_ratio and replies_ratio percentages
+ratios_tweets_table <- total_tweets_stats %>%
   mutate(like_ratio = total_likes / total_views * 100,
-         replys_ratio = total_replys / total_views * 100)
+         replies_ratio = total_replies / total_views * 100)
 
-# Creation of new table with each HEI, like_ratio, and replys_ratio 
-hei_ratios <- ratios_table %>%
-  select(id, like_ratio, replys_ratio) %>%
+# Creation of new table with each HEI, like_ratio, and replies_ratio 
+hei_tweets_ratios <- ratios_tweets_table %>%
+  select(id, like_ratio, replies_ratio) %>%
   distinct()
 
-print(hei_ratios)
+print(hei_tweets_ratios)
 ```
 
-# Plot for like_ratio and replys_ratio for each HEI
+# Plot for like_ratio and replies_ratio for each HEI
 
 ```{r}
-ggplot(hei_ratios, aes(x = id)) +
+ggplot(hei_tweets_ratios, aes(x = id)) +
   geom_bar(aes(y = like_ratio, fill = "Like Ratio"), stat = "identity", position = "dodge") +
-  geom_bar(aes(y = replys_ratio, fill = "Replys Ratio"), stat = "identity", position = "dodge") +
+  geom_bar(aes(y = replies_ratio, fill = "Replys Ratio"), stat = "identity", position = "dodge") +
   geom_text(aes(y = like_ratio, label = round(like_ratio, 2)), vjust = -0.5, position = position_dodge(width = 0.9), size = 3, color = "#000000") +
-  geom_text(aes(y = replys_ratio, label = round(replys_ratio, 2)), vjust = -0.5, position = position_dodge(width = 0.9), size = 3, color = "#FFFFFF") +
+  geom_text(aes(y = replies_ratio, label = round(replies_ratio, 2)), vjust = -0.5, position = position_dodge(width = 0.9), size = 3, color = "#FFFFFF") +
   labs(title = "Like and Replys Ratios by HEI",
        x = "HEI",
        y = "Ratio (%)",
@@ -477,55 +512,55 @@ ggplot(hei_ratios, aes(x = id)) +
 ```
 
 ```{r}
-# Table with averages of views, likes, retweets and replys
+# Table with averages of views, likes, retweets and replies
 types_of_tweets_per_tweet <- types_of_tweets %>%
                         group_by(id, media_type) %>%
-                        summarise(avg_views = mean(total_views / count),
-                                  avg_likes = mean(total_likes / count),
-                                  avg_retweets = mean(total_retweets / count),
-                                  avg_replys = mean(total_replys / count))
+                        summarise(avg_views = mean(views / count),
+                                  avg_likes = mean(likes / count),
+                                  avg_retweets = mean(retweets / count),
+                                  avg_replies = mean(replies / count))
 
 print(types_of_tweets_per_tweet)
 ```
 
 ```{r}
-# Grouping by HEI and calculating the average values of views, likes and replys across all media types
+# Grouping by HEI and calculating the average values of views, likes and replies across all media types
 total_average_stats <- types_of_tweets_per_tweet %>%
   group_by(id) %>%
   summarise(avg_views = sum(avg_views),
             avg_likes = sum(avg_likes),
-            avg_replys = sum(avg_replys))
+            avg_replies = sum(avg_replies))
 
 print(total_average_stats)
 ```
 
 ```{r}
-# Calculation of like_ratio and replys_ratio percentages
+# Calculation of like_ratio and replies_ratio percentages
 ratios_average_table <- total_average_stats %>%
   mutate(like_ratio = avg_likes / avg_views * 100,
-         replys_ratio = avg_replys / avg_views * 100)
+         replies_ratio = avg_replies / avg_views * 100)
 
-# Creation of new table with each HEI, like_ratio, and replys_ratio 
+# Creation of new table with each HEI, like_ratio, and replies_ratio 
 hei_average_ratios <- ratios_average_table %>%
-  select(id, like_ratio, replys_ratio) %>%
+  select(id, like_ratio, replies_ratio) %>%
   distinct()
 
 print(hei_average_ratios)
 ```
 
-# Plot for like_ratio and replys_ratio for each HEI
+# Plot for like_ratio and replies_ratio for each HEI
 
 ```{r}
 ggplot(hei_average_ratios, aes(x = id)) +
   geom_bar(aes(y = like_ratio, fill = "Like Ratio"), stat = "identity", position = "dodge") +
-  geom_bar(aes(y = replys_ratio, fill = "Replys Ratio"), stat = "identity", position = "dodge") +
+  geom_bar(aes(y = replies_ratio, fill = "Replies Ratio"), stat = "identity", position = "dodge") +
   geom_text(aes(y = like_ratio, label = round(like_ratio, 2)), vjust = -0.5, position = position_dodge(width = 0.9), size = 3, color = "#000000") +
-  geom_text(aes(y = replys_ratio, label = round(replys_ratio, 2)), vjust = -0.5, position = position_dodge(width = 0.9), size = 3, color = "#FFFFFF") +
-  labs(title = "Like and Replys Ratios by HEI",
+  geom_text(aes(y = replies_ratio, label = round(replies_ratio, 2)), vjust = -0.5, position = position_dodge(width = 0.9), size = 3, color = "#FFFFFF") +
+  labs(title = "Like and Replies Ratios by HEI",
        x = "HEI",
        y = "Ratio (%)",
        fill = "Metric") +
-  scale_fill_manual(values = c("Like Ratio" = "#330066", "Replys Ratio" = "#FF6666")) +
+  scale_fill_manual(values = c("Like Ratio" = "#330066", "Replies Ratio" = "#FF6666")) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
@@ -639,6 +674,54 @@ ggplot(data_tweets_content_metrics, aes(x = id, y = average_num_words)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
+# Now comments 
+
+```{r}
+data_replies <- data[data$type == "Reply", ]
+
+data_replies
+```
+
+# Interactions to replies
+
+```{r}
+# Table containing views, likes, retweets and replies for each media type for each HEI
+types_of_replies <- data_replies %>%
+              group_by(id, media_type) %>%
+              summarise(count = n(),
+                        views = sum(view_count, na.rm = TRUE),
+                        likes = sum(favorite_count, na.rm = TRUE),
+                        retweets = sum(retweet_count, na.rm = TRUE),
+                        replies = sum(reply_count, na.rm = TRUE))
+                        
+print(types_of_replies)                        
+```
+
+```{r}
+# Grouping by HEI and calculating the total values of views, likes and replies across all media types
+total_replies_stats <- types_of_replies %>%
+  group_by(id) %>%
+  summarise(total_views = sum(views),
+            total_likes = sum(likes),
+            total_replies = sum(replies))
+
+print(total_replies_stats)
+```
+
+```{r}
+# Calculation of like_ratio and replies_ratio percentages
+ratios_replies_table <- total_replies_stats %>%
+  mutate(like_ratio = total_likes / total_views * 100,
+         replies_ratio = total_replies / total_views * 100)
+
+# Creation of new table with each HEI, like_ratio, and replies_ratio 
+hei_replies_ratios <- ratios_replies_table %>%
+  select(id, like_ratio, replies_ratio) %>%
+  distinct()
+
+print(hei_replies_ratios)
+```
+
 # Clusters
 
 ```{r}
@@ -659,23 +742,23 @@ cluster_table <- merge(cluster_table, select(data_tweets_academic, id, avg_tweet
 # Joining attribute avg_tweets_in_vacation_time (average of tweets during vacation time) per HEI
 cluster_table <- merge(cluster_table, select(data_tweets_vacations, id, avg_tweets_in_vacation_time), by = "id", all=TRUE)
 
-# Joining attribute total_views (total number of views), total_likes (total number of likes) and total_replys (total number of replies) per HEI
-cluster_table <- merge(cluster_table, select(total_stats, id, total_views, total_likes, total_replys), by = "id", all=TRUE)
+# Joining attribute total_views (total number of views), total_likes (total number of likes) and total_replies (total number of replies) per HEI
+cluster_table <- merge(cluster_table, select(total_tweets_stats, id, total_views, total_likes, total_replies), by = "id", all=TRUE)
 
-# Joining attribute like_ratio (ratio of total number of likes) and replys_ratio (ratio of total number of replies) per HEI
-cluster_table <- merge(cluster_table, select(hei_ratios, id, like_ratio, replys_ratio), by = "id", all=TRUE)
+# Joining attribute like_ratio (ratio of total number of likes) and replies_ratio (ratio of total number of replies) per HEI
+cluster_table <- merge(cluster_table, select(hei_tweets_ratios, id, like_ratio, replies_ratio), by = "id", all=TRUE)
 cluster_table <- cluster_table %>%
   rename(total_like_ratio = like_ratio, 
-         total_replys_ratio = replys_ratio)
+         total_replies_ratio = replies_ratio)
 
-# Joining attribute avg_views (average number of views), avg_likes (average number of likes) and avg_replys (average number of replies) per HEI
-cluster_table <- merge(cluster_table, select(total_average_stats, id, avg_views, avg_likes, avg_replys), by = "id", all=TRUE)
+# Joining attribute avg_views (average number of views), avg_likes (average number of likes) and avg_replies (average number of replies) per HEI
+cluster_table <- merge(cluster_table, select(total_average_stats, id, avg_views, avg_likes, avg_replies), by = "id", all=TRUE)
 
-# Joining attribute like_ratio (ratio of average number of likes) and replys_ratio (ratio of average number of replies) per HEI
-cluster_table <- merge(cluster_table, select(hei_average_ratios, id, like_ratio, replys_ratio), by = "id", all=TRUE)
+# Joining attribute like_ratio (ratio of average number of likes) and replies_ratio (ratio of average number of replies) per HEI
+cluster_table <- merge(cluster_table, select(hei_average_ratios, id, like_ratio, replies_ratio), by = "id", all=TRUE)
 cluster_table <- cluster_table %>%
   rename(avg_like_ratio = like_ratio, 
-         avg_replys_ratio = replys_ratio)
+         avg_replies_ratio = replies_ratio)
 
 print(cluster_table)
 ```
