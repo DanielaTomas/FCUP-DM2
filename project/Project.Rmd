@@ -2,7 +2,7 @@
 title: "Project"
 output: html_notebook
 ---
-# TODO tratar de NAs e passar tabelas pra csv
+# TODO ver passagens entre ids e acrescentar percentages nos cluster e passar tabelas pra csv e rename blank hashtag/media 
 # How to give name to media
 
 ### For R beginners
@@ -86,6 +86,66 @@ data_ratio <- data_ratio[, c("id", "percentage_tweets", "percentage_replies")]
 print(data_ratio)
 ```
 
+# NA removal
+
+# Function to visualize the number of NAs in all columns
+
+```{r}
+na_count <- function(){
+  # Count the number of NA values for each column
+  na_count <- colSums(is.na(data))
+  
+  # Create a new data frame with the NA counts
+  na_counts_table <- data.frame(Column = names(na_count), NA_Count = na_count)
+  
+  # Print the NA counts table
+  print(na_counts_table)
+}
+```
+
+# Calculations of view, favourite, retweet and reply percentiles and visualization of NAs in all columns
+
+```{r}
+data <- data %>%
+  group_by(id) %>%
+  mutate(view_percentile = ntile(view_count, 100),
+         favorite_percentile = ntile(favorite_count, 100),
+         retweet_percentile = ntile(retweet_count, 100),
+         reply_percentile = ntile(reply_count, 100)) %>%
+  rowwise() %>%
+  mutate(avg_percentile = mean(c(view_percentile, favorite_percentile, retweet_percentile, reply_percentile), na.rm = TRUE))
+
+na_count()
+```
+
+# Calculation of the maximum number of views for each HEI
+
+```{r}
+max_view_counts <- tapply(data$view_count, data$id, max, na.rm = TRUE)
+```
+
+# Removal of NAs
+
+```{r}
+# From view count
+data$view_count <- ifelse(
+  is.na(data$view_count),
+  round(max_view_counts[data$id] * (data$avg_percentile / 100)),
+  data$view_count)
+
+# From view percentile
+data$view_percentile <- ifelse(
+  is.na(data$view_percentile),
+  data$avg_percentile,
+  data$view_percentile)
+```
+
+# Visualization of NAs in all columns
+
+```{r}
+na_count()
+```
+
 # For now we'll be only looking at tweets
 
 ```{r}
@@ -93,7 +153,6 @@ data_tweets <- data[data$type == "Tweet", ]
 
 data_tweets
 ```
-
 
 # Function to calculate average posts
 
@@ -221,7 +280,7 @@ analyze_tweets <- function(academic_year_filter = TRUE) {
     group_by(id) %>%
     summarise(unique_days = n_distinct(as.Date(created_at)))
   
-  # Count of tweets for each id
+  # Count of tweets for each HEI
   number_tweets_boolean <- filtered_data %>%
     group_by(id) %>%
     summarise(count = n())
@@ -324,7 +383,7 @@ lowest_count <- number_tweets_days %>%
   slice_min(order_by = count) %>%
   select(day_of_week, id, count)
 
-# Same but highest count of tweets per day
+# Finding the HEI with the highest count of tweets per day
 highest_count <- number_tweets_days %>%
   group_by(day_of_week) %>%
   slice_max(order_by = count) %>%
@@ -414,14 +473,14 @@ pie_maker <- function(target_id = "duke.csv"){
   hei_data <- types_of_tweets %>%
     filter(id == target_id)
   
-  # Calculate total views for each media type for the specific ID
+  # Calculating total views for each media type for the specific HEI
   hei_media <- hei_data %>%
     group_by(media_type) %>%
     summarise(total_views = sum(views),
               total_likes = sum(likes),
               total_replies = sum(replies))
   
-  # Calculating the percentage of views for each media type for the specific ID
+  # Calculating the percentage of views for each media type for the specific HEI
   hei_media$percentage_view <- hei_media$total_views / sum(hei_media$total_views) * 100
   hei_media$percentage_like <- hei_media$total_likes / sum(hei_media$total_likes) * 100
   hei_media$percentage_reply <- hei_media$total_replies / sum(hei_media$total_replies) * 100
@@ -674,7 +733,7 @@ ggplot(data_tweets_content_metrics, aes(x = id, y = average_num_words)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
-# Now comments 
+# Now replies 
 
 ```{r}
 data_replies <- data[data$type == "Reply", ]
