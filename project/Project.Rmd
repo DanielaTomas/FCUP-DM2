@@ -2,8 +2,8 @@
 title: "Project"
 output: html_notebook
 ---
-# TODO ver passagens entre ids e acrescentar percentages nos cluster e passar tabelas pra csv e rename blank hashtag/media 
-# How to give name to media
+# TODO  
+# passar tabelas pra csv(todas?), rename blank hashtag/media, juntar valores de reply pra cluster? 
 
 ### For R beginners
 New chunk *Ctrl+Alt+I*
@@ -42,20 +42,22 @@ summary(data)
 # Initial Data Preparation
 
 ```{r}
-# View of how many entries each HEI has
+# Count of how many entries each HEI has
 number_interactions <- data %>%
               group_by(id) %>% summarise(count = n())
 
 number_interactions
 ```
 
-```{r}
 # Since complutense only has 1 entry we can't learn anything from it, so we removed it
+
+```{r}
 data <- data[data$id != "complutense.csv", ]
 ```
 
-```{r}
 # Visualization of number all posts, just tweets and just replies
+
+```{r}
 number_posts <- data %>%
               group_by(id) %>% summarise(count = n())
 
@@ -92,13 +94,12 @@ print(data_ratio)
 
 ```{r}
 na_count <- function(){
-  # Count the number of NA values for each column
+  # Counting the number of NA values for each column
   na_count <- colSums(is.na(data))
   
-  # Create a new data frame with the NA counts
+  # Creating a new data frame with the NA counts
   na_counts_table <- data.frame(Column = names(na_count), NA_Count = na_count)
   
-  # Print the NA counts table
   print(na_counts_table)
 }
 ```
@@ -804,7 +805,7 @@ cluster_table <- merge(cluster_table, select(data_tweets_vacations, id, avg_twee
 # Joining attribute total_views (total number of views), total_likes (total number of likes) and total_replies (total number of replies) per HEI
 cluster_table <- merge(cluster_table, select(total_tweets_stats, id, total_views, total_likes, total_replies), by = "id", all=TRUE)
 
-# Joining attribute like_ratio (ratio of total number of likes) and replies_ratio (ratio of total number of replies) per HEI
+# Renaming attribute like_ratio to total_like_ratio and replies_ratio to total_replies_ratio
 cluster_table <- merge(cluster_table, select(hei_tweets_ratios, id, like_ratio, replies_ratio), by = "id", all=TRUE)
 cluster_table <- cluster_table %>%
   rename(total_like_ratio = like_ratio, 
@@ -813,7 +814,7 @@ cluster_table <- cluster_table %>%
 # Joining attribute avg_views (average number of views), avg_likes (average number of likes) and avg_replies (average number of replies) per HEI
 cluster_table <- merge(cluster_table, select(total_average_stats, id, avg_views, avg_likes, avg_replies), by = "id", all=TRUE)
 
-# Joining attribute like_ratio (ratio of average number of likes) and replies_ratio (ratio of average number of replies) per HEI
+# Renaming attribute like_ratio to avg_like_ratio and replies_ratio to avg_replies_ratio
 cluster_table <- merge(cluster_table, select(hei_average_ratios, id, like_ratio, replies_ratio), by = "id", all=TRUE)
 cluster_table <- cluster_table %>%
   rename(avg_like_ratio = like_ratio, 
@@ -862,10 +863,17 @@ cluster_123_3 <- cluster_maker(table = cluster_table)
 cluster_id_maker(cluster_123_3, table = cluster_table)
 ```
 
-# Six clusters with seed 123
+# Seven clusters with seed 123
 
 ```{r}
-cluster_123_6 <- cluster_maker(num_clusters = 6, table = cluster_table)
+cluster_123_6 <- cluster_maker(num_clusters = 7, table = cluster_table)
+cluster_id_maker(cluster_123_6, table = cluster_table)
+```
+
+# Five clusters with seed 123
+
+```{r}
+cluster_123_6 <- cluster_maker(num_clusters = 5, table = cluster_table)
 cluster_id_maker(cluster_123_6, table = cluster_table)
 ```
 
