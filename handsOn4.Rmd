@@ -16,6 +16,7 @@ HTML preview *Ctrl+Shift+K*
 ```{r}
 library(tm)
 library(text2vec)
+library(textstem)
 ```
 
 1. Using the functions VectorSource() and Corpus(), start by creating a corpus with three “documents” containing the following text:
@@ -112,18 +113,34 @@ sim2(as.matrix(dtm.tfidf), mq, method = "cosine")
 3. Let us now use a set of documents which represent news from Reuters news agency, related with crude oil. These documents are available on the tm package and are stored as XML files following the format used by Reuters.
 
 ```{r}
+# example of lemmatization and stemming 
+vector <- c("run", "ran", "running", "stayed", "unconsciously", "betrayed")
+lemmatize_words(vector)
+stem_words(vector)
+```
+
+```{r}
 # a) Load the above referred files by executing the following code:
-reut21578 <- system.file("texts", "crude", package = "tm")
-reuters <- VCorpus(DirSource(reut21578),
+# Access sub directory of tm package where the files are stored
+reut <- system.file("texts", "crude", package = "tm")
+# Creating a corpus using the files from the directory
+reuters <- VCorpus(DirSource(reut),
                     readerControl = list(reader = readReut21578XMLasPlain))
+
+reuters
+r0 <- reuters
 ```
 
 ```{r}
 # b) Inspect the first text of the loaded corpus
+inspect(reuters[[1]])
+meta(reuters[[1]])
 ```
 
 ```{r}
 # c) Load the package wordcloud to obtain a graphical representation of the terms in the corpus.
+library(wordcloud)
+wordcloud(reuters, colors = rainbow(20))
 ```
 
 ```{r}
@@ -133,21 +150,107 @@ reuters <- VCorpus(DirSource(reut21578),
 # • remove english stopwords
 # • obtain words stem (keeping only the “root” of each word)
 # remove punctuation, by taking into account that intra-words contractions and intra-words dashes should be preserved.
+
+reuters <- tm_map(reuters, stripWhitespace)
+
+reuters <- tm_map(reuters, 
+                  content_transformer(tolower))
+
+reuters <- tm_map(reuters, 
+                  removeWords,
+                  stopwords("english"))
+
+reuters <- tm_map(reuters, stemDocument)
+
+reuters <- tm_map(reuters, removePunctuation,
+                  preserve_intra_word_contractions = TRUE,
+                  preserve_intra_word_dashes = TRUE)
 ```
 
 ```{r}
 # e) Obtain a graphical representation of the frequencies of terms in the transformed corpus. Is it too different from the original representation?
+inspect(reuters[[1]])
+
+wordcloud(reuters, colors = rainbow(20))
+
+# wordcloud for just one text
+wordcloud(reuters[[2]], colors = rainbow(20))
+```
+
+# For the sake of curiosity lets compare 2 transfromations
+
+```{r}
+# Stemming
+r1 <- tm_map(r0, stemDocument)
+wordcloud(r1, colors = rainbow(20))
+
+# Lemmanization
+r2 <- tm_map(r0, lemmatize_words)
+wordcloud(r2, colors = rainbow(20))
 ```
 
 ```{r}
 # f) Convert the transformed corpus into a Document Term Matrix and inspect a few entries of the matrix.
+dtm <- DocumentTermMatrix(reuters)
+
+inspect(dtm[5:10, 740:743])
 ```
 
 ```{r}
 # g) Use the function FindFreqTerms for obtaining the terms that occur more than 10 times.
+findFreqTerms(dtm, 10)
 ```
 
 ```{r}
 # h) Use the function findAssocs for obtaining the terms with a correlation higher than 0.8 with the term “opec”, which stands for “Organization of the Petroleum Exporting Countries”.
+# correlation means co-ocurrence
+findAssocs(dtm, "opec", 0.8)
+```
+
+# Document Clustering
+
+# 4. Consider the collection of 50 news articles from the Reuters agency related to corporate acquisitions. This data set comes with package tm and it is already packaged as a Corpus
+
+```{r}
+# a) Load and inspect the corpus acq
+data(acq)
+inspect(head(acq))
+```
+
+```{r}
+# b) Define a function cleanup() that, given a corpus, transforms every letters to lower case, removes numbers, removes stopwords in English, removes punctuation and strips white spaces Apply the defined function to the acq corpus. For this corpus remove also the extra word "said".
+
+cleanup <- function(docs, spec.words=NULL){
+  # lowercase
+  docs <- tm_map(docs, content_transformer(tolower))
+  # rm numbers
+  docs <- tm_map(docs, removeNumbers)
+  # rm english common stopWords
+  docs <- tm_map(docs, removeWords, stopwords("english"))
+  # if stopwords are specified as a character vector
+  if(!is.null(spec.words))
+    docs <- tm_map(docs, removeWords, spec.words)
+  # rm punctuations
+  docs <- tm_map(docs, removePunctuation)
+  # rm extra white spaces
+  docs <- tm_map(docs, stripWhitespace)
+  # text stemming
+  docs <- tm_map(docs, stemDocument)
+  
+  docs
+}
+
+wordcloud(acq)
+```
+
+```{r}
+acq1 <- cleanup(acq, c("said", "the", "and"))
+
+wordcloud(acq1)
+```
+
+```{r}
+# c) Transform the collection of documents into a Document Term Matrix
+
 ```
 
