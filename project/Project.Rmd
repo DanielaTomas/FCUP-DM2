@@ -3,7 +3,7 @@ title: "Project"
 output: html_notebook
 ---
 # TODO  
-# passar tabelas pra csv(todas?), rename blank hashtag/media, juntar valores de reply pra cluster? 
+# passar tabelas pra csv(todas?), rename blank hashtag/media, juntar valores de reply pra cluster? par(mfrow=c(1,2))
 
 ### For R beginners
 New chunk *Ctrl+Alt+I*
@@ -117,12 +117,18 @@ data <- data %>%
   mutate(avg_percentile = mean(c(view_percentile, favorite_percentile, retweet_percentile, reply_percentile), na.rm = TRUE))
 
 na_count()
+
+data_percentile <- data[, c("id", "view_percentile", "favorite_percentile", "retweet_percentile", "reply_percentile", "avg_percentile")]
+
+print(data_percentile)
 ```
 
 # Calculation of the maximum number of views for each HEI
 
 ```{r}
 max_view_counts <- tapply(data$view_count, data$id, max, na.rm = TRUE)
+
+print(max_view_counts)
 ```
 
 # Removal of NAs
@@ -820,14 +826,22 @@ cluster_table <- cluster_table %>%
   rename(avg_like_ratio = like_ratio, 
          avg_replies_ratio = replies_ratio)
 
+# likes views replys retweets dont matter !??!?!?!?!?!?
+# Para acrecentar
+# most popular hour
+# most popular day
+# usage of hashtags
+# usage of urls
+# usage media_type
+# ver se estão correlacionadas
+
 print(cluster_table)
 ```
 
 # Function for cluster method
 
 ```{r}
-cluster_maker <- function(seed = 123, num_clusters = 3, table){
-  set.seed(123)
+cluster_maker <- function(num_clusters = 3, table){
   
   # Excluding id column for clustering
   cluster_data <- select(table, -id)
@@ -835,7 +849,7 @@ cluster_maker <- function(seed = 123, num_clusters = 3, table){
   # Scaling the data for kmeans method
   scaled_data <- scale(cluster_data)
   
-  kmeans_result <- kmeans(scaled_data, centers = num_clusters)
+  kmeans_result <- kmeans(scaled_data, centers = num_clusters, nstart = 10)
   
   print(kmeans_result$centers)
   print(kmeans_result$cluster)
