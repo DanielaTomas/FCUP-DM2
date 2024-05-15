@@ -31,6 +31,7 @@ docs <- c("Mining is important for finding gold", "Classification and regression
 vc <- VectorSource(docs)
 corpus <- Corpus(vc)
 dtm <- DocumentTermMatrix(corpus)
+print(dtm)
 ```
 
 
@@ -218,7 +219,7 @@ inspect(head(acq))
 ```
 
 ```{r}
-# b) Define a function cleanup() that, given a corpus, transforms every letters to lower case, removes numbers, removes stopwords in English, removes punctuation and strips white spaces Apply the defined function to the acq corpus. For this corpus remove also the extra word "said".
+# b) Define a function cleanup() that, given a corpus, transforms every letters to lower case, removes numbers, removes stopwords in English, removes punctuation and strips white spaces. Apply the defined function to the acq corpus. For this corpus remove also the extra word "said".
 
 cleanup <- function(docs, spec.words=NULL){
   # lowercase
@@ -251,6 +252,6 @@ wordcloud(acq1)
 
 ```{r}
 # c) Transform the collection of documents into a Document Term Matrix
-
+print(acq)
 ```
 

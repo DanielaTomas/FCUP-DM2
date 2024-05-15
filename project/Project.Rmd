@@ -2,9 +2,6 @@
 title: "Project"
 output: html_notebook
 ---
-# TODO  
-# passar tabelas pra csv(todas?), rename blank hashtag/media, juntar valores de reply pra cluster? 
-
 ### For R beginners
 New chunk *Ctrl+Alt+I*
 
@@ -23,6 +20,10 @@ library(tidyverse)
 library(ggplot2)
 library(reshape2)
 library(stats)
+library(tm)
+library(text2vec)
+library(textstem)
+library(topicmodels)
 ```
 
 # Data Import
@@ -763,3 +764,248 @@ elbow_maker <- function(table){
 elbow_maker(cluster_table)
 cluster_maker(3, cluster_table)
 ```
+
+# 2 Parte
+
+
+```{r}
+cleanup <- function(docs, spec.words=NULL){
+  # lowercase
+  docs <- tm_map(docs, content_transformer(tolower))
+  # rm numbers
+  docs <- tm_map(docs, removeNumbers)
+  # rm english common stopWords
+  docs <- tm_map(docs, removeWords, stopwords("english"))
+  # if stopwords are specified as a character vector
+  if(!is.null(spec.words))
+    docs <- tm_map(docs, removeWords, spec.words)
+  # rm punctuations
+  docs <- tm_map(docs, removePunctuation)
+  # rm extra white spaces
+  docs <- tm_map(docs, stripWhitespace)
+  # text stemming
+  docs <- tm_map(docs, stemDocument)
+  
+  docs
+}
+```
+
+```{r}
+pairing <- function(word_dict, paired_words) {
+  if (nrow(word_dict) != length(paired_words)) {
+    stop("The number of rows in word_dict and the length of paired_words should be equal.")
+  }
+  
+  word_dict <- tibble::tibble(word = word_dict$value)
+  result <- tibble::tibble(word = word_dict$word, category = paired_words)
+  return(result)
+}
+```
+
+# Duke analysis
+
+```{r}
+duke_texts <- subset(data_posts_content, id == "duke.csv")
+duke_texts <- duke_texts$text
+
+duke_vc <- VectorSource(duke_texts)
+duke_corpus <- Corpus(duke_vc)
+
+duke_texts <- cleanup(duke_corpus, c("will", "year", "can", "week", "first", "one", "day", "meet", "use", "care", "new", "work", "help", "north"))
+duke_dtm <- DocumentTermMatrix(duke_texts)
+
+duke_dtm.tfidf <- weightTfIdf(duke_dtm)
+
+duke_mdf <- as_tibble(as.matrix(duke_dtm.tfidf))
+
+duke_mdf.freq <- duke_mdf %>%
+  select(findFreqTerms(duke_dtm, 30)) %>%
+  summarise_all(sum) %>%
+  gather() %>%
+  arrange(desc(value))
+
+duke_mdf.freq$key <- 
+  factor(duke_mdf.freq$key,
+         levels = duke_mdf.freq$key[order(duke_mdf.freq$value)])
+
+ggplot(duke_mdf.freq, aes(x=key, y=value)) +
+  geom_bar(stat="identity") +
+  labs(x="terms", y="freq") + coord_flip()
+
+duke_word_dictionary <- as.tibble(duke_mdf.freq$key)
+# “Image”, “Education”, “Research”, “Society”, “Engagement”
+
+duke_word_category <- c("Image", "Education", "Research", "Education", "Image", "Image", "Image", "Engagement", "climat", "Image", "Education", "Image", "Education", "chang", "Research", "Education", "Society", "Society", "Image", "summer", "Image", "Research", "Image", "Research", NA, "Research", "Research")
+
+duke_word_pair <- as.tibble(pairing(duke_word_dictionary, duke_word_category))
+
+print(duke_word_pair)
+```
+
+# epfl
+
+```{r}
+epfl_texts <- subset(data_posts_content, id == "epfl.csv")
+epfl_texts <- epfl_texts$text
+
+epfl_vc <- VectorSource(epfl_texts)
+epfl_corpus <- Corpus(epfl_vc)
+
+epfl_texts <- cleanup(epfl_corpus , c("new", "use", "can", "day", "will", "year", "one", "now", "open", "via", "first", "sustain"))
+epfl_dtm <- DocumentTermMatrix(epfl_texts)
+
+epfl_dtm.tfidf <- weightTfIdf(epfl_dtm)
+
+epfl_mdf <- as_tibble(as.matrix(epfl_dtm.tfidf))
+
+epfl_mdf.freq <- epfl_mdf %>%
+  select(findFreqTerms(epfl_dtm, 30)) %>%
+  summarise_all(sum) %>%
+  gather() %>%
+  arrange(desc(value))
+
+epfl_mdf.freq$key <- 
+  factor(epfl_mdf.freq$key,
+         levels = epfl_mdf.freq$key[order(epfl_mdf.freq$value)])
+
+ggplot(epfl_mdf.freq, aes(x=key, y=value)) +
+  geom_bar(stat="identity") +
+  labs(x="terms", y="freq") + coord_flip()
+
+epfl_word_dictionary <- as.tibble(epfl_mdf.freq$key)
+
+epfl_word_category <- c("Image", "Research", "Research", "Image", "Education", "Research", "amp", NA, "Research", "Education", "Research", "Education", "Education", "Education", "Education", "Engagement", "Image", "Research", NA, "Society", "Society", "Engagement", "Engagement")
+
+epfl_word_pair <- as.tibble(pairing(epfl_word_dictionary, epfl_word_category))
+
+print(epfl_word_pair)
+```
+
+# goe
+
+```{r}
+goe_texts <- subset(data_posts_content, id == "goe.csv")
+goe_texts <- goe_texts$text
+
+goe_vc <- VectorSource(goe_texts)
+goe_corpus <- Corpus(goe_vc)
+
+goe_texts <- cleanup(goe_corpus, c("new", "can", "will", "show"))
+goe_dtm <- DocumentTermMatrix(goe_texts)
+
+goe_dtm.tfidf <- weightTfIdf(goe_dtm)
+
+goe_mdf <- as_tibble(as.matrix(goe_dtm.tfidf))
+
+goe_mdf.freq <- goe_mdf %>%
+  select(findFreqTerms(goe_dtm, 15)) %>%
+  summarise_all(sum) %>%
+  gather() %>%
+  arrange(desc(value))
+
+goe_mdf.freq$key <- 
+  factor(goe_mdf.freq$key,
+         levels = goe_mdf.freq$key[order(goe_mdf.freq$value)])
+
+ggplot(goe_mdf.freq, aes(x=key, y=value)) +
+  geom_bar(stat="identity") +
+  labs(x="terms", y="freq") + coord_flip()
+
+goe_word_dictionary <- as.tibble(goe_mdf.freq$key)
+# “Image”, “Education”, “Research”, “Society”, “Engagement”
+
+goe_word_category <- c("Research", "Research", "Image", "amp", "Engagement", "Image", "Engagement", "Research", "Image", "Education", "network", "Engamement")
+
+goe_word_pair <- as.tibble(pairing(goe_word_dictionary, goe_word_category))
+
+print(goe_word_pair)
+```
+
+# harvard
+
+```{r}
+harvard_texts <- subset(data_posts_content, id == "harvard.csv")
+harvard_texts <- harvard_texts$text
+
+harvard_vc <- VectorSource(harvard_texts)
+harvard_corpus <- Corpus(harvard_vc)
+
+harvard_texts <- cleanup(harvard_corpus)
+harvard_dtm <- DocumentTermMatrix(harvard_texts)
+
+harvard_dtm.tfidf <- weightTfIdf(harvard_dtm)
+
+harvard_mdf <- as_tibble(as.matrix(harvard_dtm.tfidf))
+
+harvard_mdf.freq <- harvard_mdf %>%
+  select(findFreqTerms(harvard_dtm, 70)) %>%
+  summarise_all(sum) %>%
+  gather() %>%
+  arrange(desc(value))
+
+harvard_mdf.freq$key <- 
+  factor(harvard_mdf.freq$key,
+         levels = harvard_mdf.freq$key[order(harvard_mdf.freq$value)])
+
+ggplot(harvard_mdf.freq, aes(x=key, y=value)) +
+  geom_bar(stat="identity") +
+  labs(x="terms", y="freq") + coord_flip()
+
+harvard_word_dictionary <- as.tibble(harvard_mdf.freq$key)
+# “Image”, “Education”, “Research”, “Society”, “Engagement”
+
+# harvard_word_category <- c("Image", "Education", "Research", "Education", "Image", "Image", "Image", "Engagement", "climat", "Image", "Education", "Image", "Education", "chang", "Research", "Education", "Society", "Society", "Image", "summer", "Image", "Research", "Image", "Research", NA, "Research", "Research")
+
+# duke_word_pair <- as.tibble(pairing(duke_word_dictionary, duke_word_category))
+
+print(harvard_dtm.tfidf)
+```
+
+# leicester
+
+```{r}
+
+```
+
+# manchester
+
+```{r}
+
+```
+
+# mit
+
+```{r}
+
+```
+
+# sb
+
+```{r}
+
+```
+
+# stanford
+
+```{r}
+
+```
+
+# trinity
+
+```{r}
+
+```
+
+# wv
+
+```{r}
+
+```
+
+# yale
+
+```{r}
+
+```
+
