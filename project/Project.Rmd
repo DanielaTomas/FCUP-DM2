@@ -3,7 +3,7 @@ title: "Project"
 output: html_notebook
 ---
 # TODO  
-# passar tabelas pra csv(todas?), rename blank hashtag/media, juntar valores de reply pra cluster? par(mfrow=c(1,2))
+# passar tabelas pra csv(todas?), rename blank hashtag/media, juntar valores de reply pra cluster? 
 
 ### For R beginners
 New chunk *Ctrl+Alt+I*
@@ -28,22 +28,22 @@ library(stats)
 # Data Import
 
 ```{r}
-data <- read.csv("~/4year/2semester/dtII/CSVs/HEIs.csv",
+data_posts <- read.csv("~/4year/2semester/dtII/CSVs/HEIs.csv",
                  colClasses = c(tweet_id = "character"))
 
 # Modifying created_at type so that attribute can be used more easily 
-data$created_at <- as.POSIXct(data$created_at,
+data_posts$created_at <- as.POSIXct(data_posts$created_at,
                               format= "%Y-%m-%dT%H:%M:%S", tz="UTC")
 
 #View(data)
-summary(data)
+summary(data_posts)
 ```
 
 # Initial Data Preparation
 
 ```{r}
 # Count of how many entries each HEI has
-number_interactions <- data %>%
+number_interactions <- data_posts %>%
               group_by(id) %>% summarise(count = n())
 
 number_interactions
@@ -52,20 +52,20 @@ number_interactions
 # Since complutense only has 1 entry we can't learn anything from it, so we removed it
 
 ```{r}
-data <- data[data$id != "complutense.csv", ]
+data_posts <- data_posts[data_posts$id != "complutense.csv", ]
 ```
 
-# Visualization of number all posts, just tweets and just replies
+# Visualization of all posts, just tweets and just replies
 
 ```{r}
-number_posts <- data %>%
-              group_by(id) %>% summarise(count = n())
+number_posts <- data_posts %>%
+              group_by(id) %>% summarise(posts = n())
 
-number_tweets <- data[data$type == "Tweet", ] %>%
-              group_by(id) %>% summarise(count = n())
+number_tweets <- data_posts[data_posts$type == "Tweet", ] %>%
+              group_by(id) %>% summarise(tweets = n())
 
-number_replies <- data[data$type == "Reply", ] %>%
-              group_by(id) %>% summarise(count = n())
+number_replies <- data_posts[data_posts$type == "Reply", ] %>%
+              group_by(id) %>% summarise(replies = n())
 
 print(number_posts)
 print(number_tweets)
@@ -75,15 +75,17 @@ print(number_replies)
 # Calculating the percentage of tweets and replies based on all posts
 
 ```{r}
-# Merging the counts of tweets (count.y) and replies (count) with the count of posts (count.x)
+# Merging the counts of tweets and replies with the count of posts
 data_ratio <- merge(number_posts, number_tweets, by = "id", all = TRUE)
 data_ratio <- merge(data_ratio, number_replies, by = "id", all = TRUE)
 
 
-data_ratio$percentage_tweets <- (data_ratio$count.y / data_ratio$count.x) * 100
-data_ratio$percentage_replies <- (data_ratio$count / data_ratio$count.x) * 100
+data_ratio$percentage_tweets <- round(((data_ratio$tweets / data_ratio$posts) * 100), 2)
+data_ratio$percentage_replies <- round(((data_ratio$replies / data_ratio$posts) * 100), 2)
 
 data_ratio <- data_ratio[, c("id", "percentage_tweets", "percentage_replies")]
+
+data_ratio$percentage_replies[is.na(data_ratio$percentage_replies)] <- 0
 
 print(data_ratio)
 ```
@@ -95,7 +97,7 @@ print(data_ratio)
 ```{r}
 na_count <- function(){
   # Counting the number of NA values for each column
-  na_count <- colSums(is.na(data))
+  na_count <- colSums(is.na(data_posts))
   
   # Creating a new data frame with the NA counts
   na_counts_table <- data.frame(Column = names(na_count), NA_Count = na_count)
@@ -107,18 +109,18 @@ na_count <- function(){
 # Calculations of view, favourite, retweet and reply percentiles and visualization of NAs in all columns
 
 ```{r}
-data <- data %>%
+data_posts <- data_posts %>%
   group_by(id) %>%
   mutate(view_percentile = ntile(view_count, 100),
          favorite_percentile = ntile(favorite_count, 100),
          retweet_percentile = ntile(retweet_count, 100),
          reply_percentile = ntile(reply_count, 100)) %>%
   rowwise() %>%
-  mutate(avg_percentile = mean(c(view_percentile, favorite_percentile, retweet_percentile, reply_percentile), na.rm = TRUE))
+  mutate(avg_percentile = round(mean(c(view_percentile, favorite_percentile, retweet_percentile, reply_percentile), na.rm = TRUE), 2))
 
 na_count()
 
-data_percentile <- data[, c("id", "view_percentile", "favorite_percentile", "retweet_percentile", "reply_percentile", "avg_percentile")]
+data_percentile <- data_posts[, c("id", "view_percentile", "favorite_percentile", "retweet_percentile", "reply_percentile", "avg_percentile")]
 
 print(data_percentile)
 ```
@@ -126,7 +128,7 @@ print(data_percentile)
 # Calculation of the maximum number of views for each HEI
 
 ```{r}
-max_view_counts <- tapply(data$view_count, data$id, max, na.rm = TRUE)
+max_view_counts <- tapply(data_posts$view_count, data_posts$id, max, na.rm = TRUE)
 
 print(max_view_counts)
 ```
@@ -135,16 +137,16 @@ print(max_view_counts)
 
 ```{r}
 # From view count
-data$view_count <- ifelse(
-  is.na(data$view_count),
-  round(max_view_counts[data$id] * (data$avg_percentile / 100)),
-  data$view_count)
+data_posts$view_count <- ifelse(
+  is.na(data_posts$view_count),
+  round(max_view_counts[data_posts$id] * (data_posts$avg_percentile / 100)),
+  data_posts$view_count)
 
 # From view percentile
-data$view_percentile <- ifelse(
-  is.na(data$view_percentile),
-  data$avg_percentile,
-  data$view_percentile)
+data_posts$view_percentile <- ifelse(
+  is.na(data_posts$view_percentile),
+  data_posts$avg_percentile,
+  data_posts$view_percentile)
 ```
 
 # Visualization of NAs in all columns
@@ -153,77 +155,69 @@ data$view_percentile <- ifelse(
 na_count()
 ```
 
-# For now we'll be only looking at tweets
-
-```{r}
-data_tweets <- data[data$type == "Tweet", ]
-
-data_tweets
-```
-
 # Function to calculate average posts
 
 ```{r}
-average_tweets <- function(timeframe = "days"){
+average_posts <- function(timeframe = "days"){
   # Calculation of the timeframe between earliest and latest post for each HEI
-  date_range <- data_tweets %>%
+  date_range <- data_posts %>%
     group_by(id) %>%
     summarise(min_date = min(created_at),
               max_date = max(created_at)) %>%
     mutate(num_days = as.numeric(difftime(max_date, min_date, units = timeframe)))
   
   # Naming the column respecting the timeframe
-  column_name <- paste0("avg_tweets_per_", timeframe)
+  column_name <- paste0("avg_posts_per_", timeframe)
   
-  # Calculation of the number of tweets per day for each HEI
-  tweets_per_timeframe <- number_tweets %>%
+  # Calculation of the number of posts per day for each HEI
+  posts_per_timeframe <- number_posts %>%
     left_join(date_range, by = "id") %>%
-    mutate(!!column_name := count / num_days)
+    mutate(!!column_name := round((posts / num_days), 2))
   
-  print(tweets_per_timeframe)
-  return(tweets_per_timeframe)
+  print(posts_per_timeframe)
+  return(posts_per_timeframe)
 }
 ```
 
 ```{r}
-tweets_per_day <- average_tweets()
-tweets_per_week <- average_tweets(timeframe = "weeks")
+posts_per_day <- average_posts()
+posts_per_week <- average_posts(timeframe = "weeks")
 ```
 
-# Plot for the average number of tweets per day for each HEI
+# Plot for the average number of posts per day for each HEI
 
 ```{r}
-barplot(tweets_per_day$avg_tweets_per_days,
-        names.arg = tweets_per_day$id,
-        main = "Average Tweets per Day",
+barplot(posts_per_day$avg_posts_per_days,
+        names.arg = posts_per_day$id,
+        main = "Average Posts per Day",
         xlab = "HEI",
-        ylab = "Average Number of Tweets",
-        ylim = c(0, max(tweets_per_day$avg_tweets_per_days) + 1),
+        ylab = "Average Number of Posts",
+        ylim = c(0, max(posts_per_day$avg_posts_per_days) + 1),
         las = 2,
         col = "#3498DB")
 
 # Adding text labels over each bar and aligning it with the center of each bar 
-text(x = barplot(tweets_per_day$avg_tweets_per_days, plot = FALSE),
-     y = tweets_per_day$avg_tweets_per_days,
-     labels = round(tweets_per_day$avg_tweets_per_days, 2),
+text(x = barplot(posts_per_day$avg_posts_per_days, plot = FALSE),
+     y = posts_per_day$avg_posts_per_days,
+     labels = round(posts_per_day$avg_posts_per_days, 2),
      pos = 3)
 ```
 
-# Plot for the average number of tweets per week for each HEI
+# Plot for the average number of posts per week for each HEI
 
 ```{r}
-barplot(tweets_per_week$avg_tweets_per_weeks,
-        names.arg = tweets_per_week$id,
-        main = "Average Tweets per Week",
+barplot(posts_per_week$avg_posts_per_weeks,
+        names.arg = posts_per_week$id,
+        main = "Average Posts per Week",
         xlab = "HEI",
-        ylab = "Average Number of Tweets",
-        ylim = c(0, max(tweets_per_week$avg_tweets_per_weeks) + 5),
+        ylab = "Average Number of Posts",
+        ylim = c(0, max(posts_per_week$avg_posts_per_weeks) + 5),
         las = 2,
         col = "#E74C3C")
 
-text(x = barplot(tweets_per_week$avg_tweets_per_weeks, plot = FALSE),
-     y = tweets_per_week$avg_tweets_per_weeks,
-     labels = round(tweets_per_week$avg_tweets_per_weeks, 2),
+text(x = barplot(posts_per_week$avg_posts_per_weeks, plot = FALSE),
+     y = posts_per_week$avg_posts_per_weeks,
+     labels = round(posts_per_week$avg_posts_per_weeks, 2),
      pos = 3)
 ```
 
@@ -253,33 +247,16 @@ check_interval <- function(date) {
 ```
 
 ```{r}
-data_tweets$academic_year <- sapply(data_tweets$created_at, check_interval)
-print(data.frame(id = data_tweets$id, academic_year = data_tweets$academic_year))
+data_posts$academic_year <- sapply(data_posts$created_at, check_interval)
+print(data.frame(id = data_posts$id, academic_year = data_posts$academic_year))
 ```
 
-# Plot for the number of tweets per timeframe of either vacation or academic time
+# Function to count number of posts and average per day during academic time and vacation time
 
 ```{r}
-barplot(table(data_tweets$academic_year),
-        main = "Number of Tweets per Timeframe",
-        xlab = "Time",
-        ylab = "Count",
-        ylim = c(0, max(table(data_tweets$academic_year)) + 1000),
-        names.arg = c("Vacation", "Academic"),
-        col = c("#8E44AD", "#F1C40F"))
-
-text(x = barplot(data_tweets$academic_year, plot = FALSE), 
-     y = table(data_tweets$academic_year) + 0.5, 
-     labels = table(data_tweets$academic_year), 
-     pos = 3)
-```
-
-# Function to count number of tweets and average per day
-
-```{r}
-analyze_tweets <- function(academic_year_filter = TRUE) {
+analyze_posts <- function(academic_year_filter = TRUE) {
   # Filtering the data based on the academic_year_filter
-  filtered_data <- data_tweets %>%
+  filtered_data <- data_posts %>%
     filter(academic_year == academic_year_filter)
   
   # Count of days for each HEI
@@ -287,19 +264,19 @@ analyze_tweets <- function(academic_year_filter = TRUE) {
     group_by(id) %>%
     summarise(unique_days = n_distinct(as.Date(created_at)))
   
-  # Count of tweets for each HEI
-  number_tweets_boolean <- filtered_data %>%
+  # Count of posts for each HEI
+  number_posts_boolean <- filtered_data %>%
     group_by(id) %>%
     summarise(count = n())
   
   # Naming the column respecting the time period
-  year <- ifelse(academic_year_filter, "academic_time", "vacation_time")
-  column_name <- paste0("avg_tweets_in_", year)
+  time <- ifelse(academic_year_filter, "academic_time", "vacation_time")
+  column_name <- paste0("avg_posts_in_", time)
   
   # Combination of data and calculation of average posts per day
-  combined_data <- left_join(unique_days, number_tweets_boolean, by = "id")
+  combined_data <- left_join(unique_days, number_posts_boolean, by = "id")
   combined_data <- combined_data %>%
-    mutate(!!column_name := count / unique_days)
+    mutate(!!column_name := round((count / unique_days), 2))
   
   print(combined_data)
   return(combined_data)
@@ -307,91 +284,94 @@ analyze_tweets <- function(academic_year_filter = TRUE) {
 ```
 
 ```{r}
-data_tweets_academic <- analyze_tweets()
-data_tweets_vacations <- analyze_tweets(academic_year_filter = FALSE)
+data_posts_academic <- analyze_posts()
+data_posts_vacations <- analyze_posts(academic_year_filter = FALSE)
 ```
 
-# Plot for the average number of tweets during academic time for each HEI
+# Plot for the average number of posts during academic time for each HEI
 
 ```{r}
-barplot(data_tweets_academic$avg_tweets_in_academic_time,
-        names.arg = data_tweets_academic$id,
-        main = "Average Tweets during Academic Time",
+barplot(data_posts_academic$avg_posts_in_academic_time,
+        names.arg = data_posts_academic$id,
+        main = "Average Posts during Academic Time",
         xlab = "HEI",
-        ylab = "Average Number of Tweets",
-        ylim = c(0, max(data_tweets_academic$avg_tweets_in_academic_time) + 5),
+        ylab = "Average Number of Posts",
+        ylim = c(0, max(data_posts_academic$avg_posts_in_academic_time) + 5),
         las = 2,
         col = "#34495E")
 
-text(x = barplot(data_tweets_academic$avg_tweets_in_academic_time, plot = FALSE),
-     y = data_tweets_academic$avg_tweets_in_academic_time,
-     labels = round(data_tweets_academic$avg_tweets_in_academic_time, 2),
+text(x = barplot(data_posts_academic$avg_posts_in_academic_time, plot = FALSE),
+     y = data_posts_academic$avg_posts_in_academic_time,
+     labels = round(data_posts_academic$avg_posts_in_academic_time, 2),
      pos = 3)
 ```
 
-# Plot for the average number of tweets during vacation time for each HEI
+# Plot for the average number of posts during vacation time for each HEI
 
 ```{r}
-barplot(data_tweets_vacations$avg_tweets_in_vacation_time,
-        names.arg = data_tweets_vacations$id,
-        main = "Average Tweets during Vacation Time",
+barplot(data_posts_vacations$avg_posts_in_vacation_time,
+        names.arg = data_posts_vacations$id,
+        main = "Average Posts during Vacation Time",
         xlab = "HEI",
-        ylab = "Average Number of Tweets",
-        ylim = c(0, max(data_tweets_vacations$avg_tweets_in_vacation_time) + 5),
+        ylab = "Average Number of Posts",
+        ylim = c(0, max(data_posts_vacations$avg_posts_in_vacation_time) + 5),
         las = 2,
         col = "#D35400")
 
-text(x = barplot(data_tweets_vacations$avg_tweets_in_vacation_time, plot = FALSE),
-     y = data_tweets_vacations$avg_tweets_in_vacation_time,
-     labels = round(data_tweets_vacations$avg_tweets_in_vacation_time, 2),
+text(x = barplot(data_posts_vacations$avg_posts_in_vacation_time, plot = FALSE),
+     y = data_posts_vacations$avg_posts_in_vacation_time,
+     labels = round(data_posts_vacations$avg_posts_in_vacation_time, 2),
      pos = 3)
 ```
 
-# Data preparation for day of the week 
+# Data preparation for dates 
 
 ```{r}
 # Creating new table that contains a new column for the day of the week
-data_tweets_days <- data_tweets %>%
+data_posts_days <- data_posts %>%
   mutate(day_of_week = weekdays(created_at))
 
 # Selecting only the id, created_at, and day_of_week columns for the new table
-data_tweets_days <- data_tweets_days %>%
+data_posts_days <- data_posts_days %>%
   select(id, created_at, day_of_week)
 
-print(data_tweets_days)
+# Create column hour from created_at
+data_posts_days$created_hour <- as.numeric(format(data_posts_days$created_at, "%H"))
+
+print(data_posts_days)
 ```
 
 ```{r}
-# Grouping by id and day_of_week, then counting the number of tweets
-number_tweets_days <- data_tweets_days %>%
+# Grouping by id and day_of_week, then counting the number of posts
+number_posts_days <- data_posts_days %>%
   group_by(id, day_of_week) %>%
   summarise(count = n())
 
-# Grouping by id, day_of_week and day created at, then counting the number of tweets
-number_tweets_per_day <- data_tweets_days %>%
-  mutate(created_date = as.Date(created_at)) %>%
-  group_by(id, day_of_week, created_date) %>%
-  summarise(count = n())
+# Grouping by id, day_of_week and day created at, then counting th enumber of tweets
+number_posts_per_day <- data_posts_days %>%
+    mutate(created_date = as.Date(created_at)) %>% 
+    group_by(id, day_of_week, created_date) %>%
+    summarize(count = n())
 
-# Finding for each HEI the average count of tweets per day
-average_number_tweets_per_day <- number_tweets_per_day %>%
+# Finding for each HEI the average count of posts per day
+average_number_posts_per_day <- number_posts_per_day %>%
   group_by(id, day_of_week) %>%
-  summarise(average_count = mean(count))
+  summarise(average_count = round(mean(count), 2))
 
-print(number_tweets_days)
+print(number_posts_days)
 ```
 
-# Highest and lowest tweets
+# Highest and lowest posts
 
 ```{r}
-# Finding the HEI with the lowest count of tweets per day
-lowest_count <- number_tweets_days %>%
+# Finding the HEI with the lowest count of posts per day
+lowest_count <- number_posts_days %>%
   group_by(day_of_week) %>%
   slice_min(order_by = count) %>%
   select(day_of_week, id, count)
 
-# Finding the HEI with the highest count of tweets per day
-highest_count <- number_tweets_days %>%
+# Finding the HEI with the highest count of posts per day
+highest_count <- number_posts_days %>%
   group_by(day_of_week) %>%
   slice_max(order_by = count) %>%
   select(day_of_week, id, count)
@@ -403,7 +383,7 @@ high_low_HEI <- bind_rows(lowest_count, highest_count) %>%
 print(high_low_HEI)
 ```
 
-# Plot for the lowest and highest count of tweets per day for each day of the week
+# Plot for the lowest and highest count of posts per day for each day of the week
 
 ```{r}
 ggplot(high_low_HEI, aes(x = day_of_week, y = count, fill = id)) +
@@ -412,18 +392,18 @@ ggplot(high_low_HEI, aes(x = day_of_week, y = count, fill = id)) +
             position = position_dodge(width = 0.9),
             vjust = -0.5,
             size = 3) +
-  labs(title = "Lowest and Highest Count of Tweets per Day for Each Day of the Week",
+  labs(title = "Lowest and Highest Count of Posts per Day for Each Day of the Week",
        x = "Day of the Week", y = "Count") +
   scale_fill_manual(values = rainbow(length(unique(high_low_HEI$id)))) +
   theme_minimal() +
   theme(legend.title = element_blank())
 ```
 
-# Average of tweets
+# Average of posts
 
 ```{r}
-# Finding the HEI with lowest and highest averaged count of tweets per day
-high_low_average_HEIs <- average_number_tweets_per_day %>%
+# Finding the HEI with lowest and highest averaged count of posts per day
+high_low_average_HEIs <- average_number_posts_per_day %>%
   group_by(day_of_week) %>%
   filter(average_count == max(average_count) | average_count == min(average_count)) %>%
   arrange(day_of_week, ifelse(average_count == min(average_count), average_count, -average_count))
@@ -431,7 +411,7 @@ high_low_average_HEIs <- average_number_tweets_per_day %>%
 print(high_low_average_HEIs)
 ```
 
-# Plot for the highest and lowest average count of tweets per day for each day of the week
+# Plot for the highest and lowest average count of posts per day for each day of the week
 
 ```{r}
 ggplot(high_low_average_HEIs, aes(x = day_of_week, y = average_count, fill = id)) +
@@ -440,249 +420,55 @@ ggplot(high_low_average_HEIs, aes(x = day_of_week, y = average_count, fill = id)
             position = position_dodge(width = 0.7),
             vjust = -0.5,
             size = 3) +
-  labs(title = "Highest and Lowest Average Count of Tweets per Day for Each Day of the Week",
+  labs(title = "Highest and Lowest Average Count of Posts per Day for Each Day of the Week",
        x = "Day of the Week", y = "Average Count") +
   scale_fill_manual(values = rainbow(length(unique(high_low_HEI$id)))) +
   theme_minimal() +
   theme(legend.title = element_blank())
 ```
-# Views Likes Retweets and Replies
+
+# Favourite hour and day
 
 ```{r}
-# Table containing views, likes, retweets and replies for each media type for each HEI
-types_of_tweets <- data_tweets %>%
-              group_by(id, media_type) %>%
-              summarise(count = n(),
-                        views = sum(view_count, na.rm = TRUE),
-                        likes = sum(favorite_count, na.rm = TRUE),
-                        retweets = sum(retweet_count, na.rm = TRUE),
-                        replies = sum(reply_count, na.rm = TRUE))
-                        
-print(types_of_tweets)                        
-```
-
-```{r}
-# Grouping by HEI and calculating the total values of views, likes and replies across all media types
-total_tweets_stats <- types_of_tweets %>%
+favourite_day_hei <- number_posts_days %>%
   group_by(id) %>%
-  summarise(total_views = sum(views),
-            total_likes = sum(likes),
-            total_replies = sum(replies))
+  top_n(1, count) %>%
+  arrange(id)
 
-print(total_tweets_stats)
-```
-
-# Function for piechart creation for views, likes and replies 
-
-```{r}
-pie_maker <- function(target_id = "duke.csv"){
-  # Filtering data for the specific HEI
-  hei_data <- types_of_tweets %>%
-    filter(id == target_id)
-  
-  # Calculating total views for each media type for the specific HEI
-  hei_media <- hei_data %>%
-    group_by(media_type) %>%
-    summarise(total_views = sum(views),
-              total_likes = sum(likes),
-              total_replies = sum(replies))
-  
-  # Calculating the percentage of views for each media type for the specific HEI
-  hei_media$percentage_view <- hei_media$total_views / sum(hei_media$total_views) * 100
-  hei_media$percentage_like <- hei_media$total_likes / sum(hei_media$total_likes) * 100
-  hei_media$percentage_reply <- hei_media$total_replies / sum(hei_media$total_replies) * 100
-  
-  # Creating the pie chart for views
-  hei_pie_chart_views <- ggplot(hei_media, aes(x = "", y = percentage_view, fill = media_type)) +
-    geom_bar(stat = "identity", width = 1) +
-    coord_polar("y", start = 0) +
-    theme_void() +
-    theme(legend.position = "right") +
-    geom_text(aes(label = paste(media_type, "\n", total_views, "(", round(percentage_view, 1), "%)")), position = position_stack(vjust = 0.5), color = "#FFFFFF") +
-    scale_fill_manual(values = c("no_media" = "#2196F3", "animated_gif" = "#E67E22", "photo" = "#8E44AD", "video" = "#138D75")) +
-    labs(title = paste("Views for each media type -", target_id))
-  
-  # Creating the pie chart for likes
-  hei_pie_chart_likes <- ggplot(hei_media, aes(x = "", y = percentage_like, fill = media_type)) +
-    geom_bar(stat = "identity", width = 1) +
-    coord_polar("y", start = 0) +
-    theme_void() +
-    theme(legend.position = "right") +
-    geom_text(aes(label = paste(media_type, "\n", total_likes, "(", round(percentage_like, 1), "%)")), position = position_stack(vjust = 0.5), color = "#FFFFFF") +
-    scale_fill_manual(values = c("no_media" = "#E91E63", "animated_gif" = "#4A148C", "photo" = "#90CAF9", "video" = "#00BFA5")) +
-    labs(title = paste("Likes for each media type -", target_id))
-  
-  # Creating the pie chart for replies
-  hei_pie_chart_replies <- ggplot(hei_media, aes(x = "", y = percentage_reply, fill = media_type)) +
-    geom_bar(stat = "identity", width = 1) +
-    coord_polar("y", start = 0) +
-    theme_void() +
-    theme(legend.position = "right") +
-    geom_text(aes(label = paste(media_type, "\n", total_replies, "(", round(percentage_reply, 1), "%)")), position = position_stack(vjust = 0.5), color = "#FFFFFF") +
-    scale_fill_manual(values = c("no_media" = "#666600", "animated_gif" = "#99CCCC", "photo" = "#9966CC", "video" = "#330000")) +
-    labs(title = paste("Replies for each media type -", target_id))
-  
-  # Print the pie charts
-  print(hei_pie_chart_views)
-  print(hei_pie_chart_likes)
-  print(hei_pie_chart_replies)
-}
-```
-
-# Plot of piecharts for each HEI
-
-```{r}
-pie_maker()
-pie_maker("epfl.csv")
-pie_maker("goe.csv")
-pie_maker("harvard.csv")
-pie_maker("leicester.csv")
-pie_maker("manchester.csv")
-pie_maker("mit.csv")
-pie_maker("sb.csv")
-pie_maker("stanford.csv")
-pie_maker("trinity.csv")
-pie_maker("wv.csv")
-pie_maker("yale.csv")
+print(favourite_day_hei)
 ```
 
 ```{r}
-# Calculation of like_ratio and replies_ratio percentages
-ratios_tweets_table <- total_tweets_stats %>%
-  mutate(like_ratio = total_likes / total_views * 100,
-         replies_ratio = total_replies / total_views * 100)
+number_posts_hours <- data_posts_days %>%
+  group_by(id, created_hour) %>%
+  summarise(count = n()) %>%
+  ungroup()
 
-# Creation of new table with each HEI, like_ratio, and replies_ratio 
-hei_tweets_ratios <- ratios_tweets_table %>%
-  select(id, like_ratio, replies_ratio) %>%
-  distinct()
-
-print(hei_tweets_ratios)
-```
-
-# Plot for like_ratio and replies_ratio for each HEI
-
-```{r}
-ggplot(hei_tweets_ratios, aes(x = id)) +
-  geom_bar(aes(y = like_ratio, fill = "Like Ratio"), stat = "identity", position = "dodge") +
-  geom_bar(aes(y = replies_ratio, fill = "Replys Ratio"), stat = "identity", position = "dodge") +
-  geom_text(aes(y = like_ratio, label = round(like_ratio, 2)), vjust = -0.5, position = position_dodge(width = 0.9), size = 3, color = "#000000") +
-  geom_text(aes(y = replies_ratio, label = round(replies_ratio, 2)), vjust = -0.5, position = position_dodge(width = 0.9), size = 3, color = "#FFFFFF") +
-  labs(title = "Like and Replys Ratios by HEI",
-       x = "HEI",
-       y = "Ratio (%)",
-       fill = "Metric") +
-  scale_fill_manual(values = c("Like Ratio" = "#2196F3", "Replys Ratio" = "#F44336")) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-```
-
-```{r}
-# Table with averages of views, likes, retweets and replies
-types_of_tweets_per_tweet <- types_of_tweets %>%
-                        group_by(id, media_type) %>%
-                        summarise(avg_views = mean(views / count),
-                                  avg_likes = mean(likes / count),
-                                  avg_retweets = mean(retweets / count),
-                                  avg_replies = mean(replies / count))
-
-print(types_of_tweets_per_tweet)
-```
-
-```{r}
-# Grouping by HEI and calculating the average values of views, likes and replies across all media types
-total_average_stats <- types_of_tweets_per_tweet %>%
+favourite_hour_hei <- number_posts_hours %>%
   group_by(id) %>%
-  summarise(avg_views = sum(avg_views),
-            avg_likes = sum(avg_likes),
-            avg_replies = sum(avg_replies))
+  top_n(1, count) %>%
+  arrange(id)
 
-print(total_average_stats)
-```
-
-```{r}
-# Calculation of like_ratio and replies_ratio percentages
-ratios_average_table <- total_average_stats %>%
-  mutate(like_ratio = avg_likes / avg_views * 100,
-         replies_ratio = avg_replies / avg_views * 100)
-
-# Creation of new table with each HEI, like_ratio, and replies_ratio 
-hei_average_ratios <- ratios_average_table %>%
-  select(id, like_ratio, replies_ratio) %>%
-  distinct()
-
-print(hei_average_ratios)
-```
-
-# Plot for like_ratio and replies_ratio for each HEI
-
-```{r}
-ggplot(hei_average_ratios, aes(x = id)) +
-  geom_bar(aes(y = like_ratio, fill = "Like Ratio"), stat = "identity", position = "dodge") +
-  geom_bar(aes(y = replies_ratio, fill = "Replies Ratio"), stat = "identity", position = "dodge") +
-  geom_text(aes(y = like_ratio, label = round(like_ratio, 2)), vjust = -0.5, position = position_dodge(width = 0.9), size = 3, color = "#000000") +
-  geom_text(aes(y = replies_ratio, label = round(replies_ratio, 2)), vjust = -0.5, position = position_dodge(width = 0.9), size = 3, color = "#FFFFFF") +
-  labs(title = "Like and Replies Ratios by HEI",
-       x = "HEI",
-       y = "Ratio (%)",
-       fill = "Metric") +
-  scale_fill_manual(values = c("Like Ratio" = "#330066", "Replies Ratio" = "#FF6666")) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-```
-
-# Hashtags
-
-```{r}
-# Table with number of unique hashtags
-unique_hashtags <- data_tweets %>%
-                group_by(id) %>%
-                summarise(count = n(),
-                          unique_hashtags = length(unique(hashtags)))
-
-print(unique_hashtags)
-```
-
-# Plot for the count of unique hashtags for each HEI
-
-```{r}
-barplot(unique_hashtags$unique_hashtags,
-        names.arg = unique_hashtags$id,
-        main = "Unique Hashtags for Each HEI",
-        xlab = "HEI",
-        ylab = "Count of Unique Hashtags",
-        ylim = c(0, max(unique_hashtags$unique_hashtags) + 50),
-        las = 2,
-        col= "#16A085")
-
-text(x = barplot(unique_hashtags$unique_hashtags, plot = FALSE),
-     y = unique_hashtags$unique_hashtags,
-     labels = round(unique_hashtags$unique_hashtags, 2),
-     pos = 3)
+print(favourite_hour_hei)
 ```
 
 # Heatmaps
-
-```{r}
-# Create column hour from created_at
-data_tweets_days$created_hour <- as.numeric(format(data_tweets_days$created_at, "%H"))
-```
 
 # Function to plot heatmap for various HEIs
 
 ```{r}
 heatmap_maker <- function(target_id = "duke.csv"){
   # Filtering data for the specific HEI
-  target_data <- data_tweets_days %>%
+  target_data <- data_posts_days %>%
     filter(id == target_id)
   
   # Grouping by day of the week and hour, and counting the number of tweets
   tweet_counts <- target_data %>%
     group_by(day_of_week, created_hour) %>%
-    summarise(num_tweets = n())
+    summarise(num_posts = n())
   
   # Plotting heatmap
-  ggplot(tweet_counts, aes(x = day_of_week, y = created_hour, fill = num_tweets)) +
+  ggplot(tweet_counts, aes(x = day_of_week, y = created_hour, fill = num_posts)) +
     geom_tile() +
     scale_fill_gradient(low = "white", high = "blue") +
     labs(title = paste("Tweet Heatmap for", target_id),
@@ -704,31 +490,178 @@ heatmap_maker("wv.csv")
 heatmap_maker("yale.csv")
 ```
 
+# Hashtags
+
+```{r}
+# Transforming empty strings into NA
+data_posts$hashtags[data_posts$hashtags == ""] <- NA
+
+# Table with number of unique hashtags and percentage of usage
+hashtags <- data_posts %>%
+                group_by(id) %>%
+                summarise(count = n(),
+                          na = sum(is.na(hashtags)),
+                          unique_hashtags = length(unique(hashtags)),
+                          hashtag_percentage = round(((count - na) / count * 100), 2))
+
+print(hashtags)
+```
+
+# Plot for the count of unique hashtags for each HEI
+
+```{r}
+barplot(hashtags$unique_hashtags,
+        names.arg = hashtags$id,
+        main = "Unique Hashtags for Each HEI",
+        xlab = "HEI",
+        ylab = "Count of Unique Hashtags",
+        ylim = c(0, max(hashtags$unique_hashtags) + 50),
+        las = 2,
+        col= "#16A085")
+
+text(x = barplot(hashtags$unique_hashtags, plot = FALSE),
+     y = hashtags$unique_hashtags,
+     labels = round(hashtags$unique_hashtags, 2),
+     pos = 3)
+```
+
+# Plot for the usage of hashtag for each HEI
+
+```{r}
+barplot(hashtags$hashtag_percentage,
+        names.arg = hashtags$id,
+        main = "Hashtags Percentage for Each HEI",
+        xlab = "HEI",
+        ylab = "Hashtags Percentage",
+        ylim = c(0, max(hashtags$hashtag_percentage) + 30),
+        las = 2,
+        col= "#F1C40F")
+
+text(x = barplot(hashtags$hashtag_percentage, plot = FALSE),
+     y = hashtags$hashtag_percentage,
+     labels = round(hashtags$hashtag_percentage, 2),
+     pos = 3)
+```
+
+# URL usage
+
+```{r}
+# Transforming empty strings into NA
+data_posts$urls[data_posts$urls == ""] <- NA
+
+# Table with number of post, number of NA and url percentage of usage
+url_usage <- data_posts %>%
+                group_by(id) %>%
+                summarise(count = n(),
+                          na = sum(is.na(urls)),
+                          url_percentage = round(((count - na) / count * 100), 2))
+
+print(url_usage)
+```
+
+# Plot for the usage of hashtag for each HEI
+
+```{r}
+barplot(url_usage$url_percentage,
+        names.arg = url_usage$id,
+        main = "Urls Percentage for Each HEI",
+        xlab = "HEI",
+        ylab = "Urls Percentage",
+        ylim = c(0, max(url_usage$url_percentage) + 10),
+        las = 2,
+        col= "#8E44AD")
+
+text(x = barplot(url_usage$url_percentage, plot = FALSE),
+     y = url_usage$url_percentage,
+     labels = round(url_usage$url_percentage, 2),
+     pos = 3)
+```
+
+# Media types 
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# Não sei se via ser possivel colocar no cluster
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+```{r}
+# Transforming empty strings into NA
+data_posts$media_type[data_posts$media_type == ""] <- NA
+
+types_of_media <- data_posts %>%
+    group_by(id, media_type) %>%
+    summarise(count = n())
+
+# Merging count of all tweets to calculate a percentage
+types_of_media <- merge(types_of_media, number_posts, by = "id", all.x = TRUE)
+
+# Calculation of percentage for each media type
+types_of_media$percentage <- round((types_of_media$count / types_of_media$posts) * 100, 2)
+
+print(types_of_media)
+```
+
+# Function for piechart of media types
+
+```{r}
+pie_maker <- function(target_id = "duke.csv"){
+  # Subset of types_of_media for each HEI
+  types_of_media_hei <- subset(types_of_media, id == target_id)
+  
+  types_of_media_hei$media_type[is.na(types_of_media_hei$media_type)] <- "no_media"
+  
+  # Create a pie chart using ggplot2
+  pie_chart <- ggplot(types_of_media_hei, aes(x = "", y = percentage, fill = media_type)) +
+    geom_bar(stat = "identity", width = 1) +
+    coord_polar("y", start = 0) +
+    theme_void() +
+    theme(legend.position = "right") +
+    geom_text(aes(label = paste(media_type, "\n", count, "(", round(percentage, 1), "%)")), position = position_stack(vjust = 0.5), color = "#FFFFFF") +
+    scale_fill_manual(values = c("no_media" = "#2196F3", "animated_gif" = "#E67E22", "photo" = "#8E44AD", "video" = "#138D75")) +
+    labs(title = paste("Media Type Distribution for", target_id), fill = "Media Type")
+    
+  # Display the pie chart
+  print(pie_chart)
+}
+```
+
+# Plot of piecharts
+
+```{r}
+pie_maker()
+pie_maker("epfl.csv")
+pie_maker("goe.csv")
+pie_maker("harvard.csv")
+pie_maker("leicester.csv")
+pie_maker("manchester.csv")
+pie_maker("mit.csv")
+pie_maker("sb.csv")
+pie_maker("stanford.csv")
+pie_maker("trinity.csv")
+pie_maker("wv.csv")
+pie_maker("yale.csv")
+```
+
 # Text
 
 ```{r}
-data_tweets_content <- data_tweets %>%
+data_posts_content <- data_posts %>%
             select(id, text)
 
 # Counting number of words
-data_tweets_content <- data_tweets_content %>%
+data_posts_content <- data_posts_content %>%
   mutate(num_words = lengths(strsplit(text, "\\s+")))
 
-print(data_tweets_content)
-
 # Grouping by HEI and calculate average, minimum, and maximum values of number of words
-data_tweets_content_metrics <- data_tweets_content %>%
+data_posts_content_metrics <- data_posts_content %>%
   group_by(id) %>%
   summarise(average_num_words = mean(num_words),
             min_num_words = min(num_words),
             max_num_words = max(num_words))
-print(data_tweets_content_metrics)
+print(data_posts_content_metrics)
 ```
 
 # Plot for the average, maximum and minimum values of words for each HEI
 
 ```{r}
-ggplot(data_tweets_content_metrics, aes(x = id, y = average_num_words)) +
+ggplot(data_posts_content_metrics, aes(x = id, y = average_num_words)) +
   geom_point(aes(color = "Average")) +
   geom_errorbar(aes(ymin = min_num_words, ymax = max_num_words, color = "Range"), width = 0.2) +
   scale_color_manual(values = c("Average" = "#1976D2", "Range" = "#EF5350")) +
@@ -740,99 +673,36 @@ ggplot(data_tweets_content_metrics, aes(x = id, y = average_num_words)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
-# Now replies 
-
-```{r}
-data_replies <- data[data$type == "Reply", ]
-
-data_replies
-```
-
-# Interactions to replies
-
-```{r}
-# Table containing views, likes, retweets and replies for each media type for each HEI
-types_of_replies <- data_replies %>%
-              group_by(id, media_type) %>%
-              summarise(count = n(),
-                        views = sum(view_count, na.rm = TRUE),
-                        likes = sum(favorite_count, na.rm = TRUE),
-                        retweets = sum(retweet_count, na.rm = TRUE),
-                        replies = sum(reply_count, na.rm = TRUE))
-                        
-print(types_of_replies)                        
-```
-
-```{r}
-# Grouping by HEI and calculating the total values of views, likes and replies across all media types
-total_replies_stats <- types_of_replies %>%
-  group_by(id) %>%
-  summarise(total_views = sum(views),
-            total_likes = sum(likes),
-            total_replies = sum(replies))
-
-print(total_replies_stats)
-```
-
-```{r}
-# Calculation of like_ratio and replies_ratio percentages
-ratios_replies_table <- total_replies_stats %>%
-  mutate(like_ratio = total_likes / total_views * 100,
-         replies_ratio = total_replies / total_views * 100)
-
-# Creation of new table with each HEI, like_ratio, and replies_ratio 
-hei_replies_ratios <- ratios_replies_table %>%
-  select(id, like_ratio, replies_ratio) %>%
-  distinct()
-
-print(hei_replies_ratios)
-```
-
 # Clusters
 
 ```{r}
 # Creating table for cluster algorithms
 
-# Joining attribute count (number of tweets) and unique_hashtags (number of unique hashtags) per HEI
-cluster_table <- merge(select(unique_hashtags, id, unique_hashtags), select(number_tweets, id, count), by = "id", all=TRUE)
+# Joining attribute percentage_tweets (percentage of tweets out of all posts) and percentage_replies (percentage of replies out of all posts) from number_posts also adding unique_hashtags (number of unique hashtags) and hashtag_percentage (percentage of posts that contain a hashtag) from hashtags, per HEI
+cluster_table <- merge(select(hashtags, id, unique_hashtags, hashtag_percentage), select(data_ratio, id, percentage_tweets, percentage_replies), by = "id", all=TRUE)
 
-# Joining attribute avg_tweets_per_days (average of tweets per day) per HEI
-cluster_table <- merge(cluster_table, select(tweets_per_day, id, avg_tweets_per_days), by = "id", all=TRUE)
+# Joining attribute avg_posts_per_days (average of posts per day) from posts_per_day per HEI
+cluster_table <- merge(cluster_table, select(posts_per_day, id, avg_posts_per_days), by = "id", all=TRUE)
 
-# Joining attribute avg_tweets_per_weeks (average of tweets per week) per HEI
-cluster_table <- merge(cluster_table, select(tweets_per_week, id, avg_tweets_per_weeks), by = "id", all=TRUE)
+# Joining attribute avg_posts_per_weeks (average of posts per week) from posts_per_week per HEI
+cluster_table <- merge(cluster_table, select(posts_per_week, id, avg_posts_per_weeks), by = "id", all=TRUE)
 
-# Joining attribute avg_tweets_in_academic_time (average of tweets during academic time) per HEI
-cluster_table <- merge(cluster_table, select(data_tweets_academic, id, avg_tweets_in_academic_time), by = "id", all=TRUE)
+# Joining attribute avg_posts_in_academic_time (average of posts during academic time)  from data_posts_academic per HEI
+cluster_table <- merge(cluster_table, select(data_posts_academic, id, avg_posts_in_academic_time), by = "id", all=TRUE)
 
-# Joining attribute avg_tweets_in_vacation_time (average of tweets during vacation time) per HEI
-cluster_table <- merge(cluster_table, select(data_tweets_vacations, id, avg_tweets_in_vacation_time), by = "id", all=TRUE)
+# Joining attribute avg_posts_in_vacation_time (average of posts during vacation time) from data_posts_vacations per HEI
+cluster_table <- merge(cluster_table, select(data_posts_vacations, id, avg_posts_in_vacation_time), by = "id", all=TRUE)
 
-# Joining attribute total_views (total number of views), total_likes (total number of likes) and total_replies (total number of replies) per HEI
-cluster_table <- merge(cluster_table, select(total_tweets_stats, id, total_views, total_likes, total_replies), by = "id", all=TRUE)
+# Joining attribute created_hour (hour where every HEI made more posts) from favourite_hour_hei per HEI
+cluster_table <- merge(cluster_table, select(favourite_hour_hei, id, created_hour), by = "id", all=TRUE)
 
-# Renaming attribute like_ratio to total_like_ratio and replies_ratio to total_replies_ratio
-cluster_table <- merge(cluster_table, select(hei_tweets_ratios, id, like_ratio, replies_ratio), by = "id", all=TRUE)
-cluster_table <- cluster_table %>%
-  rename(total_like_ratio = like_ratio, 
-         total_replies_ratio = replies_ratio)
+# Joining attribute url_percentage (percentage of posts that contain an url) from url_usage per HEI
+cluster_table <- merge(cluster_table, select(url_usage, id, url_percentage), by = "id", all=TRUE)
 
-# Joining attribute avg_views (average number of views), avg_likes (average number of likes) and avg_replies (average number of replies) per HEI
-cluster_table <- merge(cluster_table, select(total_average_stats, id, avg_views, avg_likes, avg_replies), by = "id", all=TRUE)
+# Joining attribute average_num_words (average number of words in the posts) from data_posts_content_metrics per HEI
+cluster_table <- merge(cluster_table, select(data_posts_content_metrics, id, average_num_words), by = "id", all=TRUE)
 
-# Renaming attribute like_ratio to avg_like_ratio and replies_ratio to avg_replies_ratio
-cluster_table <- merge(cluster_table, select(hei_average_ratios, id, like_ratio, replies_ratio), by = "id", all=TRUE)
-cluster_table <- cluster_table %>%
-  rename(avg_like_ratio = like_ratio, 
-         avg_replies_ratio = replies_ratio)
-
-# likes views replys retweets dont matter !??!?!?!?!?!?
-# Para acrecentar
-# most popular hour
-# most popular day
-# usage of hashtags
-# usage of urls
-# usage media_type
+# elbow method
 # ver se estão correlacionadas
 
 print(cluster_table)
@@ -841,67 +711,55 @@ print(cluster_table)
 # Function for cluster method
 
 ```{r}
-cluster_maker <- function(num_clusters = 3, table){
-  
+cluster_maker <- function(num_clusters, table){
   # Excluding id column for clustering
   cluster_data <- select(table, -id)
-  
+    
   # Scaling the data for kmeans method
   scaled_data <- scale(cluster_data)
   
-  kmeans_result <- kmeans(scaled_data, centers = num_clusters, nstart = 10)
+  kmeans_model <- kmeans(scaled_data, centers = num_clusters, nstart = 10)
+
+  # Extract cluster assignments
+  cluster_assignments <- kmeans_model$cluster
   
-  print(kmeans_result$centers)
-  print(kmeans_result$cluster)
+  # Create a data frame combining original data with cluster assignments
+  clustered_data <- cbind(cluster_table$id, cluster_data, cluster = cluster_assignments)
   
-  return(kmeans_result)
+  clustered_data <- clustered_data[, c("cluster_table$id", "cluster")]
+  
+  print(clustered_data)
 }
 ```
 
-# Function to add ids to better visualize results
+# Function to discover best number of clusters
 
 ```{r}
-cluster_id_maker <- function(kmeans_result, table){
-  # Merging the cluster assignments with the original data
-  cluster_assignments <- data.frame(id = table$id, cluster = kmeans_result$cluster)
-
-  print(cluster_assignments)
-  plot(kmeans_result$cluster)
+elbow_maker <- function(table){
+  cluster_data <- select(table, -id)
+  scaled_data <- scale(cluster_data)
+  
+  wss <- vector()
+  range <- 1:10
+  
+  for (k in range) {
+    kmeans_model <- kmeans(scaled_data, centers = k, nstart = 10)
+    wss[k] <- kmeans_model$tot.withinss
+  }
+  
+  elbow_df <- data.frame(k = range, WSS = wss)
+  ggplot(elbow_df, aes(x = k, y = WSS)) +
+    geom_line() +
+    geom_point() +
+    labs(x = "Number of Clusters", y = "Within-Cluster Sum of Squares (WCSS)",
+         title = "Elbow Method for Optimal k") +
+    theme_minimal()
 }
 ```
 
-# Three clusters with seed 123
+# 
 
 ```{r}
-cluster_123_3 <- cluster_maker(table = cluster_table)
-cluster_id_maker(cluster_123_3, table = cluster_table)
+elbow_maker(cluster_table)
+cluster_maker(3, cluster_table)
 ```
-
-# Seven clusters with seed 123
-
-```{r}
-cluster_123_6 <- cluster_maker(num_clusters = 7, table = cluster_table)
-cluster_id_maker(cluster_123_6, table = cluster_table)
-```
-
-# Five clusters with seed 123
-
-```{r}
-cluster_123_6 <- cluster_maker(num_clusters = 5, table = cluster_table)
-cluster_id_maker(cluster_123_6, table = cluster_table)
-```
-
-# Four clusters with seed 4855
-
-```{r}
-cluster_123_3 <- cluster_maker(seed = 4855, num_clusters = 4, table = cluster_table)
-cluster_id_maker(cluster_123_3, table = cluster_table)
-```
-
-# Six clusters with seed 4855
-
-```{r}
-cluster_123_6 <- cluster_maker(seed = 4855, num_clusters = 6, table = cluster_table)
-cluster_id_maker(cluster_123_6, table = cluster_table)
-```
-
