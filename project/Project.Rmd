@@ -1006,7 +1006,7 @@ manchester_texts <- manchester_texts$text
 manchester_vc <- VectorSource(manchester_texts)
 manchester_corpus <- Corpus(manchester_vc)
 
-manchester_texts <- cleanup(manchester_corpus, c("👇", "can", "just", "will", "get", "well", "one", "help", "now"))
+manchester_texts <- cleanup(manchester_corpus, c("👇", "can", "just", "will", "get", "well", "one", "help", "now", "new", "read", "congratulations"))
 manchester_dtm <- DocumentTermMatrix(manchester_texts)
 
 manchester_dtm.tfidf <- weightTfIdf(manchester_dtm)
@@ -1029,7 +1029,7 @@ ggplot(manchester_mdf.freq, aes(x=key, y=value)) +
 
 manchester_word_dictionary <- as.tibble(manchester_mdf.freq$key)
 
-manchester_word_category <- c("read", "Society?", "Image", NA, "Engagement", "Image", "Education", "Education", "Engagement", "Image", "Education", "Society", "new", "Research", "Research", "Education", "Education", "Education", "Society", "Research", "Education", "Research")
+manchester_word_category <- c(NA, "Image", "Engagement", "Image", "Education", "Education", "Engagement", "Image", "Education", "Society", "Research", "Research", "Education", "Education", "Education", "Engagement", "Research", "Education", "Research")
 
 manchester_word_pair <- as.tibble(pairing(manchester_word_dictionary, manchester_word_category))
 
@@ -1039,36 +1039,234 @@ print(manchester_word_pair)
 # mit
 
 ```{r}
+mit_texts <- subset(data_posts_content, id == "mit.csv")
+mit_texts <- mit_texts$text
 
+mit_vc <- VectorSource(mit_texts)
+mit_corpus <- Corpus(mit_vc)
+
+mit_texts <- cleanup(mit_corpus, c("new", "can", "says", "“", "’", "—", "", "may", "first", "will", "using", "way", "one", "science"))
+mit_dtm <- DocumentTermMatrix(mit_texts)
+
+mit_dtm.tfidf <- weightTfIdf(mit_dtm)
+
+mit_mdf <- as_tibble(as.matrix(mit_dtm.tfidf))
+
+mit_mdf.freq <- mit_mdf %>%
+  select(findFreqTerms(mit_dtm, 40)) %>%
+  summarise_all(sum) %>%
+  gather() %>%
+  arrange(desc(value))
+
+mit_mdf.freq$key <- 
+  factor(mit_mdf.freq$key,
+         levels = mit_mdf.freq$key[order(mit_mdf.freq$value)])
+
+ggplot(mit_mdf.freq, aes(x=key, y=value)) +
+  geom_bar(stat="identity") +
+  labs(x="terms", y="freq") + coord_flip()
+
+mit_word_dictionary <- as.tibble(mit_mdf.freq$key)
+
+mit_word_category <- c("Image", "Research", NA, "Image", NA, "Education", "Research", NA, "Education", "Research", "Research", "Education", "Research", "Research", "Image", "Education", "Education", "Research", "Research", "Research", "Research", "Research", "Research", "Research", "Research", "Society")
+
+mit_word_pair <- as.tibble(pairing(mit_word_dictionary, mit_word_category))
+
+print(mit_word_pair)
 ```
 
 # sb
 
 ```{r}
+sb_texts <- subset(data_posts_content, id == "sb.csv")
+sb_texts <- sb_texts$text
 
+sb_vc <- VectorSource(sb_texts)
+sb_corpus <- Corpus(sb_vc)
+
+sb_texts <- cleanup(sb_corpus, c("new", "—", "will", "week", "can", "amp", "via", "now", "future", "first"))
+sb_dtm <- DocumentTermMatrix(sb_texts)
+
+sb_dtm.tfidf <- weightTfIdf(sb_dtm)
+
+sb_mdf <- as_tibble(as.matrix(sb_dtm.tfidf))
+
+sb_mdf.freq <- sb_mdf %>%
+  select(findFreqTerms(sb_dtm, 30)) %>%
+  summarise_all(sum) %>%
+  gather() %>%
+  arrange(desc(value))
+
+sb_mdf.freq$key <- 
+  factor(sb_mdf.freq$key,
+         levels = sb_mdf.freq$key[order(sb_mdf.freq$value)])
+
+ggplot(sb_mdf.freq, aes(x=key, y=value)) +
+  geom_bar(stat="identity") +
+  labs(x="terms", y="freq") + coord_flip()
+
+sb_word_dictionary <- as.tibble(sb_mdf.freq$key)
+
+sb_word_category <- c("Image", "Research", "Image", "Image", "Image", NA, "Research", "Image", "Image", "Research", "Education", "Image", "Education", "Image", "Education", "Image", "Society")
+
+sb_word_pair <- as.tibble(pairing(sb_word_dictionary, sb_word_category))
+
+print(sb_word_pair)
 ```
 
 # stanford
 
 ```{r}
+stanford_texts <- subset(data_posts_content, id == "stanford.csv")
+stanford_texts <- stanford_texts$text
 
+stanford_vc <- VectorSource(stanford_texts)
+stanford_corpus <- Corpus(stanford_vc)
+
+stanford_texts <- cleanup(stanford_corpus, c("new", "will"))
+stanford_dtm <- DocumentTermMatrix(stanford_texts)
+
+stanford_dtm.tfidf <- weightTfIdf(stanford_dtm)
+
+stanford_mdf <- as_tibble(as.matrix(stanford_dtm.tfidf))
+
+stanford_mdf.freq <- stanford_mdf %>%
+  select(findFreqTerms(stanford_dtm, 25)) %>%
+  summarise_all(sum) %>%
+  gather() %>%
+  arrange(desc(value))
+
+stanford_mdf.freq$key <- 
+  factor(stanford_mdf.freq$key,
+         levels = stanford_mdf.freq$key[order(stanford_mdf.freq$value)])
+
+ggplot(stanford_mdf.freq, aes(x=key, y=value)) +
+  geom_bar(stat="identity") +
+  labs(x="terms", y="freq") + coord_flip()
+
+stanford_word_dictionary <- as.tibble(stanford_mdf.freq$key)
+
+stanford_word_category <- c("Image", "Image", "Research", "Education", NA)
+
+stanford_word_pair <- as.tibble(pairing(stanford_word_dictionary, stanford_word_category))
+
+print(stanford_word_pair)
 ```
 
 # trinity
 
 ```{r}
+trinity_texts <- subset(data_posts_content, id == "trinity.csv")
+trinity_texts <- trinity_texts$text
 
+trinity_vc <- VectorSource(trinity_texts)
+trinity_corpus <- Corpus(trinity_vc)
+
+trinity_texts <- cleanup(trinity_corpus, c("amp", "read", "new", "can", "will", "week", "work", "great", "day", "visit", "irish", "first", "led", "congratulations"))
+trinity_dtm <- DocumentTermMatrix(trinity_texts)
+
+trinity_dtm.tfidf <- weightTfIdf(trinity_dtm)
+
+trinity_mdf <- as_tibble(as.matrix(trinity_dtm.tfidf))
+
+trinity_mdf.freq <- trinity_mdf %>%
+  select(findFreqTerms(trinity_dtm, 40)) %>%
+  summarise_all(sum) %>%
+  gather() %>%
+  arrange(desc(value))
+
+trinity_mdf.freq$key <- 
+  factor(trinity_mdf.freq$key,
+         levels = trinity_mdf.freq$key[order(trinity_mdf.freq$value)])
+
+ggplot(trinity_mdf.freq, aes(x=key, y=value)) +
+  geom_bar(stat="identity") +
+  labs(x="terms", y="freq") + coord_flip()
+
+trinity_word_dictionary <- as.tibble(trinity_mdf.freq$key)
+
+trinity_word_category <- c("Image", "Education", "Research", "Image", "Research", "Image", "Research", "Society", "Society", "Education", "Engagement", "Engagement", "Education", "Image", "Education", "Image", "Research")
+
+trinity_word_pair <- as.tibble(pairing(trinity_word_dictionary, trinity_word_category))
+
+print(trinity_word_pair)
 ```
 
 # wv
 
 ```{r}
+wv_texts <- subset(data_posts_content, id == "wv.csv")
+wv_texts <- wv_texts$text
 
+wv_vc <- VectorSource(wv_texts)
+wv_corpus <- Corpus(wv_vc)
+
+wv_texts <- cleanup(wv_corpus, c("💛💙", "🙌", "👉", "happy", "day", "see", "week", "great", "can", "will", "well", "know", "new", "now", "get", "just"))
+wv_dtm <- DocumentTermMatrix(wv_texts)
+
+wv_dtm.tfidf <- weightTfIdf(wv_dtm)
+
+wv_mdf <- as_tibble(as.matrix(wv_dtm.tfidf))
+
+wv_mdf.freq <- wv_mdf %>%
+  select(findFreqTerms(wv_dtm, 40)) %>%
+  summarise_all(sum) %>%
+  gather() %>%
+  arrange(desc(value))
+
+wv_mdf.freq$key <- 
+  factor(wv_mdf.freq$key,
+         levels = wv_mdf.freq$key[order(wv_mdf.freq$value)])
+
+ggplot(wv_mdf.freq, aes(x=key, y=value)) +
+  geom_bar(stat="identity") +
+  labs(x="terms", y="freq") + coord_flip()
+
+wv_word_dictionary <- as.tibble(wv_mdf.freq$key)
+
+#wv_word_category <- c(NA, "Image", "Image", NA, "Image", "Image", "Engagement", "Education", "Education", "Education", NA)
+
+#wv_word_pair <- as.tibble(pairing(wv_word_dictionary, wv_word_category))
+
+print(wv_word_dictionary)
 ```
 
 # yale
 
 ```{r}
+yale_texts <- subset(data_posts_content, id == "yale.csv")
+yale_texts <- yale_texts$text
 
+yale_vc <- VectorSource(yale_texts)
+yale_corpus <- Corpus(yale_vc)
+
+yale_texts <- cleanup(yale_corpus, c("new", "—", "will", "can", "'", "first", "work", "read", "help", "year"))
+yale_dtm <- DocumentTermMatrix(yale_texts)
+
+yale_dtm.tfidf <- weightTfIdf(yale_dtm)
+
+yale_mdf <- as_tibble(as.matrix(yale_dtm.tfidf))
+
+yale_mdf.freq <- yale_mdf %>%
+  select(findFreqTerms(yale_dtm, 70)) %>%
+  summarise_all(sum) %>%
+  gather() %>%
+  arrange(desc(value))
+
+yale_mdf.freq$key <- 
+  factor(yale_mdf.freq$key,
+         levels = yale_mdf.freq$key[order(yale_mdf.freq$value)])
+
+ggplot(yale_mdf.freq, aes(x=key, y=value)) +
+  geom_bar(stat="identity") +
+  labs(x="terms", y="freq") + coord_flip()
+
+yale_word_dictionary <- as.tibble(yale_mdf.freq$key)
+
+yale_word_category <- c("Research", "Education", "Education", NA, "Research", "Research", "Research", "Research", "Education", "Image", "Research", "Education", "Image", "Research", NA, "Research", "Image", "Image", "Research", "Image", "Research", "Society", "Research", "Society", "Society")
+
+yale_word_pair <- as.tibble(pairing(yale_word_dictionary, yale_word_category))
+
+print(yale_word_pair)
 ```
 
