@@ -23,7 +23,7 @@ library(stats)
 library(tm)
 library(text2vec)
 library(textstem)
-library(topicmodels)
+library(arules)
 ```
 
 # Data Import
@@ -802,10 +802,32 @@ pairing <- function(word_dict, paired_words) {
 }
 ```
 
+```{r}
+classify_text <- function(text, rules, word_pair) {
+  # Tokenize the text into words
+  words <- unlist(strsplit(text, "\\W+"))
+  
+  # Find the category with the highest confidence rule
+  categories <- 
+  category_scores <- sapply(categories, function(category) {
+    category_rules <- subset(rules, rhs %in% category)
+    max(sapply(category_rules, function(rule) {
+      antecedent <- labels(lhs(rule))
+      consequent <- labels(rhs(rule))
+      sum(antecedent %in% words) / length(antecedent) * confidence(rule)
+    }), na.rm = TRUE)
+  })
+  
+  # Return the category with the highest score
+  categories[which.max(category_scores)]
+}
+```
+
 # Duke analysis
 
 ```{r}
 duke_texts <- subset(data_posts_content, id == "duke.csv")
+test <- duke_texts$text[1]
 duke_texts <- duke_texts$text
 
 duke_vc <- VectorSource(duke_texts)
@@ -832,11 +854,11 @@ ggplot(duke_mdf.freq, aes(x=key, y=value)) +
   geom_bar(stat="identity") +
   labs(x="terms", y="freq") + coord_flip()
 
-duke_word_dictionary <- as.tibble(duke_mdf.freq$key)
+duke_word_dictionary <- as_tibble(duke_mdf.freq$key)
 
 duke_word_category <- c("Image", "Education", "Education", "Image", "Image", "Research", "Research", "Image", "Image", "Engagement", "Research", "Research", "Image", "Education", "Education", "Society", "Education", "Engagement")
 
-duke_word_pair <- as.tibble(pairing(duke_word_dictionary, duke_word_category))
+duke_word_pair <- pairing(duke_word_dictionary, duke_word_category)
 
 print(duke_word_pair)
 ```
@@ -871,11 +893,11 @@ ggplot(epfl_mdf.freq, aes(x=key, y=value)) +
   geom_bar(stat="identity") +
   labs(x="terms", y="freq") + coord_flip()
 
-epfl_word_dictionary <- as.tibble(epfl_mdf.freq$key)
+epfl_word_dictionary <- as_tibble(epfl_mdf.freq$key)
 
 epfl_word_category <- c("Image", "Research", "Image", "Research", "Research", "Research", "Education", "Image", "Research", "Research", "Education", "Research", NA, "Education", "Education")
 
-epfl_word_pair <- as.tibble(pairing(epfl_word_dictionary, epfl_word_category))
+epfl_word_pair <- pairing(epfl_word_dictionary, epfl_word_category)
 
 print(epfl_word_pair)
 ```
@@ -910,11 +932,11 @@ ggplot(goe_mdf.freq, aes(x=key, y=value)) +
   geom_bar(stat="identity") +
   labs(x="terms", y="freq") + coord_flip()
 
-goe_word_dictionary <- as.tibble(goe_mdf.freq$key)
+goe_word_dictionary <- as_tibble(goe_mdf.freq$key)
 
 goe_word_category <- c("Research", "Research", "Image", "Education", "Engagement", "Image", "Engagement", "Education")
 
-goe_word_pair <- as.tibble(pairing(goe_word_dictionary, goe_word_category))
+goe_word_pair <- pairing(goe_word_dictionary, goe_word_category)
 
 print(goe_word_pair)
 ```
@@ -949,11 +971,11 @@ ggplot(harvard_mdf.freq, aes(x=key, y=value)) +
   geom_bar(stat="identity") +
   labs(x="terms", y="freq") + coord_flip()
 
-harvard_word_dictionary <- as.tibble(harvard_mdf.freq$key)
+harvard_word_dictionary <- as_tibble(harvard_mdf.freq$key)
 
 harvard_word_category <- c("Image", "Education", "Research", "Image", "Research", "Research", "Engagement", "Education", "Society", "Education", "Society", "Research", "Education", "Image", "Research", NA, "Research", "Education", "Education", NA, "Research", "Society", "Society", "Research", "Education")
 
-harvard_word_pair <- as.tibble(pairing(harvard_word_dictionary, harvard_word_category))
+harvard_word_pair <- pairing(harvard_word_dictionary, harvard_word_category)
 
 print(harvard_word_pair)
 ```
@@ -988,11 +1010,11 @@ ggplot(leicester_mdf.freq, aes(x=key, y=value)) +
   geom_bar(stat="identity") +
   labs(x="terms", y="freq") + coord_flip()
 
-leicester_word_dictionary <- as.tibble(leicester_mdf.freq$key)
+leicester_word_dictionary <- as_tibble(leicester_mdf.freq$key)
 
 leicester_word_category <- c("Image", NA, "Image", "Engagement", "Society", "Education", "Education", "Research", "Engagement", "Engagement", "Image", "Engagement", "Education", "Engamement", "Engagement", "Education", "Image", "Engagement", "Education", NA, "Image")
 
-leicester_word_pair <- as.tibble(pairing(leicester_word_dictionary, leicester_word_category))
+leicester_word_pair <- pairing(leicester_word_dictionary, leicester_word_category)
 
 print(leicester_word_pair)
 ```
@@ -1027,11 +1049,11 @@ ggplot(manchester_mdf.freq, aes(x=key, y=value)) +
   geom_bar(stat="identity") +
   labs(x="terms", y="freq") + coord_flip()
 
-manchester_word_dictionary <- as.tibble(manchester_mdf.freq$key)
+manchester_word_dictionary <- as_tibble(manchester_mdf.freq$key)
 
 manchester_word_category <- c(NA, "Image", "Engagement", "Image", "Education", "Education", "Engagement", "Image", "Education", "Society", "Research", "Research", "Education", "Education", "Education", "Engagement", "Research", "Education", "Research")
 
-manchester_word_pair <- as.tibble(pairing(manchester_word_dictionary, manchester_word_category))
+manchester_word_pair <- pairing(manchester_word_dictionary, manchester_word_category)
 
 print(manchester_word_pair)
 ```
@@ -1066,11 +1088,11 @@ ggplot(mit_mdf.freq, aes(x=key, y=value)) +
   geom_bar(stat="identity") +
   labs(x="terms", y="freq") + coord_flip()
 
-mit_word_dictionary <- as.tibble(mit_mdf.freq$key)
+mit_word_dictionary <- as_tibble(mit_mdf.freq$key)
 
 mit_word_category <- c("Image", "Research", NA, "Image", NA, "Education", "Research", NA, "Education", "Research", "Research", "Education", "Research", "Research", "Image", "Education", "Education", "Research", "Research", "Research", "Research", "Research", "Research", "Research", "Research", "Society")
 
-mit_word_pair <- as.tibble(pairing(mit_word_dictionary, mit_word_category))
+mit_word_pair <- pairing(mit_word_dictionary, mit_word_category)
 
 print(mit_word_pair)
 ```
@@ -1105,11 +1127,11 @@ ggplot(sb_mdf.freq, aes(x=key, y=value)) +
   geom_bar(stat="identity") +
   labs(x="terms", y="freq") + coord_flip()
 
-sb_word_dictionary <- as.tibble(sb_mdf.freq$key)
+sb_word_dictionary <- as_tibble(sb_mdf.freq$key)
 
 sb_word_category <- c("Image", "Research", "Image", "Image", "Image", NA, "Research", "Image", "Image", "Research", "Education", "Image", "Education", "Image", "Education", "Image", "Society")
 
-sb_word_pair <- as.tibble(pairing(sb_word_dictionary, sb_word_category))
+sb_word_pair <- pairing(sb_word_dictionary, sb_word_category)
 
 print(sb_word_pair)
 ```
@@ -1144,11 +1166,11 @@ ggplot(stanford_mdf.freq, aes(x=key, y=value)) +
   geom_bar(stat="identity") +
   labs(x="terms", y="freq") + coord_flip()
 
-stanford_word_dictionary <- as.tibble(stanford_mdf.freq$key)
+stanford_word_dictionary <- as_tibble(stanford_mdf.freq$key)
 
 stanford_word_category <- c("Image", "Image", "Research", "Education", NA)
 
-stanford_word_pair <- as.tibble(pairing(stanford_word_dictionary, stanford_word_category))
+stanford_word_pair <- pairing(stanford_word_dictionary, stanford_word_category)
 
 print(stanford_word_pair)
 ```
@@ -1183,11 +1205,11 @@ ggplot(trinity_mdf.freq, aes(x=key, y=value)) +
   geom_bar(stat="identity") +
   labs(x="terms", y="freq") + coord_flip()
 
-trinity_word_dictionary <- as.tibble(trinity_mdf.freq$key)
+trinity_word_dictionary <- as_tibble(trinity_mdf.freq$key)
 
 trinity_word_category <- c("Image", "Education", "Research", "Image", "Research", "Image", "Research", "Society", "Society", "Education", "Engagement", "Engagement", "Education", "Image", "Education", "Image", "Research")
 
-trinity_word_pair <- as.tibble(pairing(trinity_word_dictionary, trinity_word_category))
+trinity_word_pair <- pairing(trinity_word_dictionary, trinity_word_category)
 
 print(trinity_word_pair)
 ```
@@ -1222,13 +1244,13 @@ ggplot(wv_mdf.freq, aes(x=key, y=value)) +
   geom_bar(stat="identity") +
   labs(x="terms", y="freq") + coord_flip()
 
-wv_word_dictionary <- as.tibble(wv_mdf.freq$key)
+wv_word_dictionary <- as_tibble(wv_mdf.freq$key)
 
-#wv_word_category <- c(NA, "Image", "Image", NA, "Image", "Image", "Engagement", "Education", "Education", "Education", NA)
+wv_word_category <- c(NA, "Image", "Image", NA, "Image", "Image", "Engagement", "Education", "Education", "Education", NA)
 
-#wv_word_pair <- as.tibble(pairing(wv_word_dictionary, wv_word_category))
+wv_word_pair <- pairing(wv_word_dictionary, wv_word_category)
 
-print(wv_word_dictionary)
+print(wv_word_pair)
 ```
 
 # yale
@@ -1261,11 +1283,11 @@ ggplot(yale_mdf.freq, aes(x=key, y=value)) +
   geom_bar(stat="identity") +
   labs(x="terms", y="freq") + coord_flip()
 
-yale_word_dictionary <- as.tibble(yale_mdf.freq$key)
+yale_word_dictionary <- as_tibble(yale_mdf.freq$key)
 
 yale_word_category <- c("Research", "Education", "Education", NA, "Research", "Research", "Research", "Research", "Education", "Image", "Research", "Education", "Image", "Research", NA, "Research", "Image", "Image", "Research", "Image", "Research", "Society", "Research", "Society", "Society")
 
-yale_word_pair <- as.tibble(pairing(yale_word_dictionary, yale_word_category))
+yale_word_pair <- pairing(yale_word_dictionary, yale_word_category)
 
 print(yale_word_pair)
 ```
