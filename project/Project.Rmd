@@ -23,7 +23,6 @@ library(stats)
 library(tm)
 library(text2vec)
 library(textstem)
-library(arules)
 ```
 
 # Data Import
@@ -803,32 +802,31 @@ pairing <- function(word_dict, paired_words) {
 ```
 
 ```{r}
-classify_text <- function(text, rules, word_pair) {
-  # Tokenize the text into words
-  words <- unlist(strsplit(text, "\\W+"))
+classify_text <- function(text, word_pair) {
+  # Tokenize the text and convert to lower case
+  words <- tolower(unlist(strsplit(text, "\\W+")))
   
-  # Find the category with the highest confidence rule
-  categories <- 
-  category_scores <- sapply(categories, function(category) {
-    category_rules <- subset(rules, rhs %in% category)
-    max(sapply(category_rules, function(rule) {
-      antecedent <- labels(lhs(rule))
-      consequent <- labels(rhs(rule))
-      sum(antecedent %in% words) / length(antecedent) * confidence(rule)
-    }), na.rm = TRUE)
-  })
+  # Find the frequent words in the text
+  freq_words <- words[words %in% word_pair$word]
   
-  # Return the category with the highest score
-  categories[which.max(category_scores)]
+  if (length(freq_words) == 0) {
+    return(NA)  # Return NA if no frequent words are found
+  }
+  
+  # Get the corresponding categories
+  categories <- word_pair$category[word_pair$word %in% freq_words]
+  
+  # Return the most frequent category (mode)
+  return(names(sort(table(categories), decreasing = TRUE))[1])
 }
 ```
 
 # Duke analysis
 
 ```{r}
-duke_texts <- subset(data_posts_content, id == "duke.csv")
-test <- duke_texts$text[1]
-duke_texts <- duke_texts$text
+duke_text <- subset(data_posts_content, id == "duke.csv")
+test <- duke_text$text[1]
+duke_texts <- duke_text$text
 
 duke_vc <- VectorSource(duke_texts)
 duke_corpus <- Corpus(duke_vc)
@@ -861,6 +859,13 @@ duke_word_category <- c("Image", "Education", "Education", "Image", "Image", "Re
 duke_word_pair <- pairing(duke_word_dictionary, duke_word_category)
 
 print(duke_word_pair)
+
+# Apply the classify_text function to each text in duke_text$text
+duke_text <- duke_text %>%
+  mutate(category = sapply(text, classify_text, word_pair = duke_word_pair))
+
+# View the results
+print(duke_text)
 ```
 
 # epfl
