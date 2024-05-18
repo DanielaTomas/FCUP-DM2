@@ -43,10 +43,10 @@ summary(data_posts)
 
 ```{r}
 # Count of how many entries each HEI has
-number_interactions <- data_posts %>%
+number_posts <- data_posts %>%
               group_by(id) %>% summarise(count = n())
 
-number_interactions
+number_posts
 ```
 
 # Since complutense only has 1 entry we can't learn anything from it, so we removed it
@@ -158,7 +158,7 @@ na_count()
 # Function to calculate average posts
 
 ```{r}
-average_posts <- function(timeframe = "days"){
+average_posts <- function(timeframe){
   # Calculation of the timeframe between earliest and latest post for each HEI
   date_range <- data_posts %>%
     group_by(id) %>%
@@ -180,8 +180,8 @@ average_posts <- function(timeframe = "days"){
 ```
 
 ```{r}
-posts_per_day <- average_posts()
-posts_per_week <- average_posts(timeframe = "weeks")
+posts_per_day <- average_posts("days")
+posts_per_week <- average_posts("weeks")
 ```
 
 # Plot for the average number of posts per day for each HEI
@@ -254,7 +254,7 @@ print(data.frame(id = data_posts$id, academic_year = data_posts$academic_year))
 # Function to count number of posts and average per day during academic time and vacation time
 
 ```{r}
-analyze_posts <- function(academic_year_filter = TRUE) {
+analyze_posts <- function(academic_year_filter) {
   # Filtering the data based on the academic_year_filter
   filtered_data <- data_posts %>%
     filter(academic_year == academic_year_filter)
@@ -284,8 +284,8 @@ analyze_posts <- function(academic_year_filter = TRUE) {
 ```
 
 ```{r}
-data_posts_academic <- analyze_posts()
-data_posts_vacations <- analyze_posts(academic_year_filter = FALSE)
+data_posts_academic <- analyze_posts(TRUE)
+data_posts_vacations <- analyze_posts(FALSE)
 ```
 
 # Plot for the average number of posts during academic time for each HEI
@@ -383,7 +383,7 @@ high_low_HEI <- bind_rows(lowest_count, highest_count) %>%
 print(high_low_HEI)
 ```
 
-# Plot for the lowest and highest count of posts per day for each day of the week
+# Plot for the highest and lowest count of posts per day for each day of the week
 
 ```{r}
 ggplot(high_low_HEI, aes(x = day_of_week, y = count, fill = id)) +
@@ -392,7 +392,7 @@ ggplot(high_low_HEI, aes(x = day_of_week, y = count, fill = id)) +
             position = position_dodge(width = 0.9),
             vjust = -0.5,
             size = 3) +
-  labs(title = "Lowest and Highest Count of Posts per Day for Each Day of the Week",
+  labs(title = "Highest and Lowest Count of Posts per Day for Each Day of the Week",
        x = "Day of the Week", y = "Count") +
   scale_fill_manual(values = rainbow(length(unique(high_low_HEI$id)))) +
   theme_minimal() +
@@ -457,7 +457,7 @@ print(favourite_hour_hei)
 # Function to plot heatmap for various HEIs
 
 ```{r}
-heatmap_maker <- function(target_id = "duke.csv"){
+heatmap_maker <- function(target_id){
   # Filtering data for the specific HEI
   target_data <- data_posts_days %>%
     filter(id == target_id)
@@ -471,12 +471,16 @@ heatmap_maker <- function(target_id = "duke.csv"){
   ggplot(tweet_counts, aes(x = day_of_week, y = created_hour, fill = num_posts)) +
     geom_tile() +
     scale_fill_gradient(low = "white", high = "blue") +
-    labs(title = paste("Tweet Heatmap for", target_id),
+    labs(title = paste("Post Heatmap for", target_id),
          x = "Day of the week",
          y = "Hour of the day")
 }
+```
 
-heatmap_maker()
+# Plot of heatmap for each HEI
+
+```{r}
+heatmap_maker("duke.csv")
 heatmap_maker("epfl.csv")
 heatmap_maker("goe.csv")
 heatmap_maker("harvard.csv")
@@ -738,20 +742,20 @@ pairing <- function(word_dict, paired_words) {
 
 ```{r}
 classify_text <- function(text, word_pair) {
-  # Tokenize the text and convert to lower case
+  # Tokenizing the text and converting to lowercase
   words <- tolower(unlist(strsplit(text, "\\W+")))
   
-  # Find the frequent words in the text
+  # Finding the frequent words in the text
   freq_words <- words[words %in% word_pair$word]
   
   if (length(freq_words) == 0) {
-    return("Unknown")  # Return Unknown if no frequent words are found
+    return("Unknown")  # Returning Unknown if no frequent words are found
   }
   
-  # Get the corresponding categories
+  # Getting the corresponding categories
   categories <- word_pair$category[word_pair$word %in% freq_words]
   
-  # Sort categories by frequency in descending order and return the most frequent one
+  # Sorting categories by frequency in descending order and return the most frequent one
   return(names(sort(table(categories), decreasing = TRUE))[1])
 }
 ```
@@ -783,11 +787,11 @@ freq_terms <- function(clean_text, number) {
     factor(mdf.freq$key,
            levels = mdf.freq$key[order(mdf.freq$value)])
   
+  word_dictionary <- as_tibble(mdf.freq$key)
+  
   ggplot(mdf.freq, aes(x=key, y=value)) +
     geom_bar(stat="identity") +
     labs(x="terms", y="freq") + coord_flip()
-  
-  word_dictionary <- as_tibble(mdf.freq$key)
   
   return(word_dictionary)
 }
@@ -799,7 +803,7 @@ freq_terms <- function(clean_text, number) {
 duke_text <- subset(data_posts_content, id == "duke.csv")
 duke_corpus <- corpus_maker(duke_text)
 
-duke_clean_text <- cleanup(duke_corpus, c("new", "will", "change", "north", "can", "first", "year", "carolina", "years", "summer", "meet", "one"))
+duke_clean_text <-cleanup(duke_corpus, c("new", "will", "change", "north", "can", "first", "year", "carolina", "years", "summer", "meet", "one"))
 
 duke_word_dictionary <- freq_terms(duke_clean_text, 30)
 
