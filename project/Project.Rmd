@@ -577,68 +577,6 @@ text(x = barplot(url_usage$url_percentage, plot = FALSE),
      pos = 3)
 ```
 
-# Media types 
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Não sei se via ser possivel colocar no cluster
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-```{r}
-# Transforming empty strings into NA
-data_posts$media_type[data_posts$media_type == ""] <- NA
-
-types_of_media <- data_posts %>%
-    group_by(id, media_type) %>%
-    summarise(count = n())
-
-# Merging count of all tweets to calculate a percentage
-types_of_media <- merge(types_of_media, number_posts, by = "id", all.x = TRUE)
-
-# Calculation of percentage for each media type
-types_of_media$percentage <- round((types_of_media$count / types_of_media$posts) * 100, 2)
-
-print(types_of_media)
-```
-
-# Function for piechart of media types
-
-```{r}
-pie_maker <- function(target_id = "duke.csv"){
-  # Subset of types_of_media for each HEI
-  types_of_media_hei <- subset(types_of_media, id == target_id)
-  
-  types_of_media_hei$media_type[is.na(types_of_media_hei$media_type)] <- "no_media"
-  
-  # Create a pie chart using ggplot2
-  pie_chart <- ggplot(types_of_media_hei, aes(x = "", y = percentage, fill = media_type)) +
-    geom_bar(stat = "identity", width = 1) +
-    coord_polar("y", start = 0) +
-    theme_void() +
-    theme(legend.position = "right") +
-    geom_text(aes(label = paste(media_type, "\n", count, "(", round(percentage, 1), "%)")), position = position_stack(vjust = 0.5), color = "#FFFFFF") +
-    scale_fill_manual(values = c("no_media" = "#2196F3", "animated_gif" = "#E67E22", "photo" = "#8E44AD", "video" = "#138D75")) +
-    labs(title = paste("Media Type Distribution for", target_id), fill = "Media Type")
-    
-  # Display the pie chart
-  print(pie_chart)
-}
-```
-
-# Plot of piecharts
-
-```{r}
-pie_maker()
-pie_maker("epfl.csv")
-pie_maker("goe.csv")
-pie_maker("harvard.csv")
-pie_maker("leicester.csv")
-pie_maker("manchester.csv")
-pie_maker("mit.csv")
-pie_maker("sb.csv")
-pie_maker("stanford.csv")
-pie_maker("trinity.csv")
-pie_maker("wv.csv")
-pie_maker("yale.csv")
-```
-
 # Text
 
 ```{r}
@@ -701,9 +639,6 @@ cluster_table <- merge(cluster_table, select(url_usage, id, url_percentage), by 
 
 # Joining attribute average_num_words (average number of words in the posts) from data_posts_content_metrics per HEI
 cluster_table <- merge(cluster_table, select(data_posts_content_metrics, id, average_num_words), by = "id", all=TRUE)
-
-# elbow method
-# ver se estão correlacionadas
 
 print(cluster_table)
 ```
