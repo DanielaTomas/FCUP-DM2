@@ -696,7 +696,7 @@ elbow_maker <- function(table){
 }
 ```
 
-# 
+# Plot of Elbow Method and selection of best number of cluster to view how HEIs are grouped
 
 ```{r}
 elbow_maker(cluster_table)
