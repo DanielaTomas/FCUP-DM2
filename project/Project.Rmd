@@ -23,6 +23,7 @@ library(stats)
 library(tm)
 library(text2vec)
 library(textstem)
+library(syuzhet)
 ```
 
 # Data Import
@@ -703,8 +704,7 @@ elbow_maker(cluster_table)
 cluster_maker(3, cluster_table)
 ```
 
-# 2 Parte
-
+# Posts Classification
 
 ```{r}
 cleanup <- function(docs, spec.words=NULL){
@@ -797,7 +797,7 @@ freq_terms <- function(clean_text, number) {
 }
 ```
 
-# Duke analysis
+# Duke
 
 ```{r}
 duke_text <- subset(data_posts_content, id == "duke.csv")
@@ -1064,3 +1064,178 @@ yale_text <- yale_text %>%
 print(yale_text)
 ```
 
+# Sentiment Analysis
+
+# Function for emotions
+
+```{r}
+emotions_maker <- function(texts, hei_name){
+  text_emotion <- get_nrc_sentiment(texts)
+  
+  # Proportions for text values 
+  emotion_proportions <- colSums(prop.table(text_emotion[, 1:8]))
+  
+  # Visualization of percentages on each emotion found on posts
+  barplot <- barplot(
+    sort(colSums(prop.table(text_emotion[, 1:8]))), 
+    horiz = TRUE, 
+    cex.names = 0.7, 
+    las = 1, 
+    main = sprintf("Emotions found in %s's texts", hei_name), 
+    xlab="Percentage",
+    xlim = c(0, max(emotion_proportions) * 1.2)
+  )
+  
+  text(
+    x = sort(emotion_proportions),
+    y = barplot,                    
+    labels = sprintf("%.2f%%", 100 * sort(emotion_proportions)),
+    pos = 4,                               
+    cex = 0.7                              
+  )
+}
+```
+
+# Duke
+
+```{r}
+duke_text$sentiment <- round(get_sentiment(duke_text$text), 2)
+
+print(duke_text)
+```
+
+```{r}
+emotions_maker(duke_text$text, "duke")
+```
+
+# epfl
+
+```{r}
+epfl_text$sentiment <- round(get_sentiment(epfl_text$text), 2)
+
+print(epfl_text)
+```
+
+```{r}
+emotions_maker(epfl_text$text, "epfl")
+```
+
+# goe
+
+```{r}
+goe_text$sentiment <- round(get_sentiment(goe_text$text), 2)
+
+print(goe_text)
+```
+
+```{r}
+emotions_maker(goe_text$text, "goe")
+```
+
+# harvard
+
+```{r}
+harvard_text$sentiment <- round(get_sentiment(harvard_text$text), 2)
+
+print(harvard_text)
+```
+
+```{r}
+emotions_maker(harvard_text$text, "harvard")
+```
+
+# leicester
+
+```{r}
+leicester_text$sentiment <- round(get_sentiment(leicester_text$text), 2)
+
+print(leicester_text)
+```
+
+```{r}
+emotions_maker(leicester_text$text, "leicester")
+```
+
+# manchester
+
+```{r}
+manchester_text$sentiment <- round(get_sentiment(manchester_text$text), 2)
+
+print(manchester_text)
+```
+
+```{r}
+emotions_maker(manchester_text$text, "manchester")
+```
+
+# mit
+
+```{r}
+mit_text$sentiment <- round(get_sentiment(mit_text$text), 2)
+
+print(mit_text)
+```
+
+```{r}
+emotions_maker(mit_text$text, "mit")
+```
+
+# sb
+
+```{r}
+sb_text$sentiment <- round(get_sentiment(sb_text$text), 2)
+
+print(sb_text)
+```
+
+```{r}
+emotions_maker(sb_text$text, "sb")
+```
+
+# stanford
+
+```{r}
+stanford_text$sentiment <- round(get_sentiment(stanford_text$text), 2)
+
+print(stanford_text)
+```
+
+```{r}
+emotions_maker(stanford_text$text, "stanford")
+```
+
+# trinity
+
+```{r}
+trinity_text$sentiment <- round(get_sentiment(trinity_text$text), 2)
+
+print(trinity_text)
+```
+
+```{r}
+emotions_maker(trinity_text$text, "trinity")
+```
+
+# wv
+
+```{r}
+wv_text$sentiment <- round(get_sentiment(wv_text$text), 2)
+
+print(wv_text)
+```
+
+```{r}
+emotions_maker(wv_text$text, "wv")
+```
+
+# yale
+
+```{r}
+yale_text$sentiment <- round(get_sentiment(yale_text$text), 2)
+
+print(yale_text)
+```
+
+```{r}
+emotions_maker(yale_text$text, "yale")
+```
