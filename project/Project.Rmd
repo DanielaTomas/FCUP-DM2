@@ -1167,6 +1167,33 @@ print(yale_text)
 emotions_maker(yale_text$text, "yale")
 ```
 
+# Creation of average sentiment for each HEI
+
+```{r}
+# Combine all the sentiment scores into one data frame
+all_sentiments <- rbind(
+    duke_text[, c("id", "sentiment")],
+    epfl_text[, c("id", "sentiment")],
+    goe_text[, c("id", "sentiment")],
+    harvard_text[, c("id", "sentiment")],
+    leicester_text[, c("id", "sentiment")],
+    manchester_text[, c("id", "sentiment")],
+    mit_text[, c("id", "sentiment")],
+    sb_text[, c("id", "sentiment")],
+    stanford_text[, c("id", "sentiment")],
+    trinity_text[, c("id", "sentiment")],
+    wv_text[, c("id", "sentiment")],
+    yale_text[, c("id", "sentiment")]
+)
+
+# Calculate the average sentiment for each HEI
+hei_average_sentiments <- aggregate(sentiment ~ id, data = all_sentiments, FUN = mean) %>%
+    rename(average_sentiment = sentiment)
+
+# Print the table
+print(hei_average_sentiments)
+```
+
 # Clusters
 
 # Function for cosine matrix
@@ -1219,6 +1246,9 @@ cluster_table <- merge(cluster_table, select(url_usage, id, url_percentage), by 
 
 # Joining attribute average_num_words (average number of words in the posts) from data_posts_content_metrics per HEI
 cluster_table <- merge(cluster_table, select(data_posts_content_metrics, id, average_num_words), by = "id", all=TRUE)
+
+# Joining attribute average_sentiment (average sentiment of posts) from hei_average_sentiments per HEI
+cluster_table <- merge(cluster_table, select(hei_average_sentiments, id, average_sentiment), by = "id", all=TRUE)
 
 print(cluster_table)
 ```
@@ -1289,5 +1319,5 @@ elbow_maker <- function(table){
 
 ```{r}
 elbow_maker(cluster_table)
-cluster_maker(3, cluster_table)
+cluster_maker(4, cluster_table)
 ```
