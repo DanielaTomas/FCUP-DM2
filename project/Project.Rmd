@@ -2,9 +2,6 @@
 title: "Project"
 output: html_notebook
 ---
-# TODO  
-# passar tabelas pra csv(todas?), rename blank hashtag/media, juntar valores de reply pra cluster? 
-
 ### For R beginners
 New chunk *Ctrl+Alt+I*
 
@@ -23,6 +20,9 @@ library(tidyverse)
 library(ggplot2)
 library(reshape2)
 library(stats)
+library(tm)
+library(text2vec)
+library(textstem)
 ```
 
 # Data Import
@@ -43,10 +43,10 @@ summary(data_posts)
 
 ```{r}
 # Count of how many entries each HEI has
-number_interactions <- data_posts %>%
+number_posts <- data_posts %>%
               group_by(id) %>% summarise(count = n())
 
-number_interactions
+number_posts
 ```
 
 # Since complutense only has 1 entry we can't learn anything from it, so we removed it
@@ -158,7 +158,7 @@ na_count()
 # Function to calculate average posts
 
 ```{r}
-average_posts <- function(timeframe = "days"){
+average_posts <- function(timeframe){
   # Calculation of the timeframe between earliest and latest post for each HEI
   date_range <- data_posts %>%
     group_by(id) %>%
@@ -180,8 +180,8 @@ average_posts <- function(timeframe = "days"){
 ```
 
 ```{r}
-posts_per_day <- average_posts()
-posts_per_week <- average_posts(timeframe = "weeks")
+posts_per_day <- average_posts("days")
+posts_per_week <- average_posts("weeks")
 ```
 
 # Plot for the average number of posts per day for each HEI
@@ -254,7 +254,7 @@ print(data.frame(id = data_posts$id, academic_year = data_posts$academic_year))
 # Function to count number of posts and average per day during academic time and vacation time
 
 ```{r}
-analyze_posts <- function(academic_year_filter = TRUE) {
+analyze_posts <- function(academic_year_filter) {
   # Filtering the data based on the academic_year_filter
   filtered_data <- data_posts %>%
     filter(academic_year == academic_year_filter)
@@ -284,8 +284,8 @@ analyze_posts <- function(academic_year_filter = TRUE) {
 ```
 
 ```{r}
-data_posts_academic <- analyze_posts()
-data_posts_vacations <- analyze_posts(academic_year_filter = FALSE)
+data_posts_academic <- analyze_posts(TRUE)
+data_posts_vacations <- analyze_posts(FALSE)
 ```
 
 # Plot for the average number of posts during academic time for each HEI
@@ -383,7 +383,7 @@ high_low_HEI <- bind_rows(lowest_count, highest_count) %>%
 print(high_low_HEI)
 ```
 
-# Plot for the lowest and highest count of posts per day for each day of the week
+# Plot for the highest and lowest count of posts per day for each day of the week
 
 ```{r}
 ggplot(high_low_HEI, aes(x = day_of_week, y = count, fill = id)) +
@@ -392,7 +392,7 @@ ggplot(high_low_HEI, aes(x = day_of_week, y = count, fill = id)) +
             position = position_dodge(width = 0.9),
             vjust = -0.5,
             size = 3) +
-  labs(title = "Lowest and Highest Count of Posts per Day for Each Day of the Week",
+  labs(title = "Highest and Lowest Count of Posts per Day for Each Day of the Week",
        x = "Day of the Week", y = "Count") +
   scale_fill_manual(values = rainbow(length(unique(high_low_HEI$id)))) +
   theme_minimal() +
@@ -457,7 +457,7 @@ print(favourite_hour_hei)
 # Function to plot heatmap for various HEIs
 
 ```{r}
-heatmap_maker <- function(target_id = "duke.csv"){
+heatmap_maker <- function(target_id){
   # Filtering data for the specific HEI
   target_data <- data_posts_days %>%
     filter(id == target_id)
@@ -471,12 +471,16 @@ heatmap_maker <- function(target_id = "duke.csv"){
   ggplot(tweet_counts, aes(x = day_of_week, y = created_hour, fill = num_posts)) +
     geom_tile() +
     scale_fill_gradient(low = "white", high = "blue") +
-    labs(title = paste("Tweet Heatmap for", target_id),
+    labs(title = paste("Post Heatmap for", target_id),
          x = "Day of the week",
          y = "Hour of the day")
 }
+```
 
-heatmap_maker()
+# Plot of heatmap for each HEI
+
+```{r}
+heatmap_maker("duke.csv")
 heatmap_maker("epfl.csv")
 heatmap_maker("goe.csv")
 heatmap_maker("harvard.csv")
@@ -577,68 +581,6 @@ text(x = barplot(url_usage$url_percentage, plot = FALSE),
      pos = 3)
 ```
 
-# Media types 
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Não sei se via ser possivel colocar no cluster
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-```{r}
-# Transforming empty strings into NA
-data_posts$media_type[data_posts$media_type == ""] <- NA
-
-types_of_media <- data_posts %>%
-    group_by(id, media_type) %>%
-    summarise(count = n())
-
-# Merging count of all tweets to calculate a percentage
-types_of_media <- merge(types_of_media, number_posts, by = "id", all.x = TRUE)
-
-# Calculation of percentage for each media type
-types_of_media$percentage <- round((types_of_media$count / types_of_media$posts) * 100, 2)
-
-print(types_of_media)
-```
-
-# Function for piechart of media types
-
-```{r}
-pie_maker <- function(target_id = "duke.csv"){
-  # Subset of types_of_media for each HEI
-  types_of_media_hei <- subset(types_of_media, id == target_id)
-  
-  types_of_media_hei$media_type[is.na(types_of_media_hei$media_type)] <- "no_media"
-  
-  # Create a pie chart using ggplot2
-  pie_chart <- ggplot(types_of_media_hei, aes(x = "", y = percentage, fill = media_type)) +
-    geom_bar(stat = "identity", width = 1) +
-    coord_polar("y", start = 0) +
-    theme_void() +
-    theme(legend.position = "right") +
-    geom_text(aes(label = paste(media_type, "\n", count, "(", round(percentage, 1), "%)")), position = position_stack(vjust = 0.5), color = "#FFFFFF") +
-    scale_fill_manual(values = c("no_media" = "#2196F3", "animated_gif" = "#E67E22", "photo" = "#8E44AD", "video" = "#138D75")) +
-    labs(title = paste("Media Type Distribution for", target_id), fill = "Media Type")
-    
-  # Display the pie chart
-  print(pie_chart)
-}
-```
-
-# Plot of piecharts
-
-```{r}
-pie_maker()
-pie_maker("epfl.csv")
-pie_maker("goe.csv")
-pie_maker("harvard.csv")
-pie_maker("leicester.csv")
-pie_maker("manchester.csv")
-pie_maker("mit.csv")
-pie_maker("sb.csv")
-pie_maker("stanford.csv")
-pie_maker("trinity.csv")
-pie_maker("wv.csv")
-pie_maker("yale.csv")
-```
-
 # Text
 
 ```{r}
@@ -702,9 +644,6 @@ cluster_table <- merge(cluster_table, select(url_usage, id, url_percentage), by 
 # Joining attribute average_num_words (average number of words in the posts) from data_posts_content_metrics per HEI
 cluster_table <- merge(cluster_table, select(data_posts_content_metrics, id, average_num_words), by = "id", all=TRUE)
 
-# elbow method
-# ver se estão correlacionadas
-
 print(cluster_table)
 ```
 
@@ -757,9 +696,371 @@ elbow_maker <- function(table){
 }
 ```
 
-# 
+# Plot of Elbow Method and selection of best number of cluster to view how HEIs are grouped
 
 ```{r}
 elbow_maker(cluster_table)
 cluster_maker(3, cluster_table)
 ```
+
+# 2 Parte
+
+
+```{r}
+cleanup <- function(docs, spec.words=NULL){
+  # lowercase
+  docs <- tm_map(docs, content_transformer(tolower))
+  # rm numbers
+  docs <- tm_map(docs, removeNumbers)
+  # rm english common stopWords
+  docs <- tm_map(docs, removeWords, stopwords("english"))
+  # if stopwords are specified as a character vector
+  if(!is.null(spec.words))
+    docs <- tm_map(docs, removeWords, spec.words)
+  # rm punctuations
+  docs <- tm_map(docs, removePunctuation)
+  # rm extra white spaces
+  docs <- tm_map(docs, stripWhitespace)
+  # lemmatizing text
+  docs <- tm_map(docs, lemmatize_words)
+  
+  docs
+}
+```
+
+```{r}
+pairing <- function(word_dict, paired_words) {
+  if (nrow(word_dict) != length(paired_words)) {
+    stop("The number of rows in word_dict and the length of paired_words should be equal.")
+  }
+  
+  word_dict <- tibble::tibble(word = word_dict$value)
+  result <- tibble::tibble(word = word_dict$word, category = paired_words)
+  return(result)
+}
+```
+
+```{r}
+classify_text <- function(text, word_pair) {
+  # Tokenizing the text and converting to lowercase
+  words <- tolower(unlist(strsplit(text, "\\W+")))
+  
+  # Finding the frequent words in the text
+  freq_words <- words[words %in% word_pair$word]
+  
+  if (length(freq_words) == 0) {
+    return("Unknown")  # Returning Unknown if no frequent words are found
+  }
+  
+  # Getting the corresponding categories
+  categories <- word_pair$category[word_pair$word %in% freq_words]
+  
+  # Sorting categories by frequency in descending order and return the most frequent one
+  return(names(sort(table(categories), decreasing = TRUE))[1])
+}
+```
+
+```{r}
+corpus_maker <- function(text) {
+  texts <- text$text
+  vc <- VectorSource(texts)
+  corpus <- Corpus(vc)
+  
+  return(corpus)
+}
+```
+
+```{r}
+freq_terms <- function(clean_text, number) {
+  dtm <- DocumentTermMatrix(clean_text)
+  dtm.tfidf <- weightTfIdf(dtm)
+  
+  mdf <- as_tibble(as.matrix(dtm.tfidf))
+  
+  mdf.freq <- mdf %>%
+  select(findFreqTerms(dtm, number)) %>%
+  summarise_all(sum) %>%
+  gather() %>%
+  arrange(desc(value))
+
+  mdf.freq$key <- 
+    factor(mdf.freq$key,
+           levels = mdf.freq$key[order(mdf.freq$value)])
+  
+  word_dictionary <- as_tibble(mdf.freq$key)
+  
+  ggplot(mdf.freq, aes(x=key, y=value)) +
+    geom_bar(stat="identity") +
+    labs(x="terms", y="freq") + coord_flip()
+  
+  return(word_dictionary)
+}
+```
+
+# Duke analysis
+
+```{r}
+duke_text <- subset(data_posts_content, id == "duke.csv")
+duke_corpus <- corpus_maker(duke_text)
+
+duke_clean_text <-cleanup(duke_corpus, c("new", "will", "change", "north", "can", "first", "year", "carolina", "years", "summer", "meet", "one"))
+
+duke_word_dictionary <- freq_terms(duke_clean_text, 30)
+
+duke_word_category <- c("Image", "Education", "Education", "Image", "Image", "Research", "Research", "Image", "Image", "Engagement", "Research", "Research", "Image", "Education", "Education", "Society", "Education", "Engagement")
+
+duke_word_pair <- pairing(duke_word_dictionary, duke_word_category)
+
+print(duke_word_pair)
+
+# Applying the classify_text function to each text
+duke_text <- duke_text %>%
+  mutate(category = sapply(text, classify_text, word_pair = duke_word_pair))
+
+print(duke_text)
+```
+
+# epfl
+
+```{r}
+epfl_text <- subset(data_posts_content, id == "epfl.csv")
+epfl_corpus <- corpus_maker(epfl_text)
+
+epfl_clean_text <- cleanup(epfl_corpus, c("new", "amp", "can", "will", "one", "now", "–", "via", "portrait"))
+
+epfl_word_dictionary <- freq_terms(epfl_clean_text, 30)
+
+epfl_word_category <- c("Image", "Research", "Image", "Research", "Research", "Research", "Education", "Image", "Research", "Research", "Education", "Research", NA, "Education", "Education")
+
+epfl_word_pair <- pairing(epfl_word_dictionary, epfl_word_category)
+
+print(epfl_word_pair)
+
+# Applying the classify_text function to each text
+epfl_text <- epfl_text %>%
+  mutate(category = sapply(text, classify_text, word_pair = epfl_word_pair))
+
+print(epfl_text)
+```
+
+# goe
+
+```{r}
+goe_text <- subset(data_posts_content, id == "goe.csv")
+goe_corpus <- corpus_maker(goe_text)
+
+goe_clean_text <- cleanup(goe_corpus, c("can", "new", "amp", "will"))
+
+goe_word_dictionary <- freq_terms(goe_clean_text, 15)
+
+goe_word_category <- c("Research", "Research", "Image", "Education", "Engagement", "Image", "Engagement", "Education")
+
+goe_word_pair <- pairing(goe_word_dictionary, goe_word_category)
+
+print(goe_word_pair)
+
+# Applying the classify_text function to each text
+goe_text <- goe_text %>%
+  mutate(category = sapply(text, classify_text, word_pair = goe_word_pair))
+
+print(goe_text)
+```
+
+# harvard
+
+```{r}
+harvard_text <- subset(data_posts_content, id == "harvard.csv")
+harvard_corpus <- corpus_maker(harvard_text)
+
+harvard_clean_text <- cleanup(harvard_corpus, c("new", "can", "will", "summer", "year", "first", "may", "-", "recent", "years", "one", "said", "time", "many", "world", "change"))
+
+harvard_word_dictionary <- freq_terms(harvard_clean_text, 50)
+
+harvard_word_category <- c("Image", "Education", "Research", "Image", "Research", "Research", "Engagement", "Education", "Society", "Education", "Society", "Research", "Education", "Image", "Research", NA, "Research", "Education", "Education", NA, "Research", "Society", "Society", "Research", "Education")
+
+harvard_word_pair <- pairing(harvard_word_dictionary, harvard_word_category)
+
+print(harvard_word_pair)
+
+harvard_text <- harvard_text %>%
+  mutate(category = sapply(text, classify_text, word_pair = harvard_word_pair))
+
+print(harvard_text)
+```
+
+# leicester
+
+```{r}
+leicester_text <- subset(data_posts_content, id == "leicester.csv")
+leicester_corpus <- corpus_maker(leicester_text)
+
+leicester_clean_text <- cleanup(leicester_corpus, c("👉", "day", "new", "clear", "year", "can", "will", "time", "space", "one", "first"))
+
+leicester_word_dictionary <- freq_terms(leicester_clean_text, 60)
+
+leicester_word_category <- c("Image", NA, "Image", "Engagement", "Society", "Education", "Education", "Research", "Engagement", "Engagement", "Image", "Engagement", "Education", "Engamement", "Engagement", "Education", "Image", "Engagement", "Education", NA, "Image")
+
+leicester_word_pair <- pairing(leicester_word_dictionary, leicester_word_category)
+
+print(leicester_word_pair)
+
+leicester_text <- leicester_text %>%
+  mutate(category = sapply(text, classify_text, word_pair = leicester_word_pair))
+
+print(leicester_text)
+```
+
+# manchester
+
+```{r}
+manchester_text <- subset(data_posts_content, id == "manchester.csv")
+manchester_corpus <- corpus_maker(manchester_text)
+
+manchester_clean_text <- cleanup(manchester_corpus, c("👇", "can", "just", "will", "get", "well", "one", "help", "now", "new", "read", "congratulations"))
+
+manchester_word_dictionary <- freq_terms(manchester_clean_text, 50)
+
+manchester_word_category <- c(NA, "Image", "Engagement", "Image", "Education", "Education", "Engagement", "Image", "Education", "Society", "Research", "Research", "Education", "Education", "Education", "Engagement", "Research", "Education", "Research")
+
+manchester_word_pair <- pairing(manchester_word_dictionary, manchester_word_category)
+
+print(manchester_word_pair)
+
+manchester_text <- manchester_text %>%
+  mutate(category = sapply(text, classify_text, word_pair = manchester_word_pair))
+
+print(manchester_text)
+```
+
+# mit
+
+```{r}
+mit_text <- subset(data_posts_content, id == "mit.csv")
+mit_corpus <- corpus_maker(mit_text)
+
+mit_clean_text <- cleanup(mit_corpus, c("new", "can", "says", "“", "’", "—", "", "may", "first", "will", "using", "way", "one", "science"))
+
+mit_word_dictionary <- freq_terms(mit_clean_text, 40)
+
+mit_word_category <- c("Image", "Research", NA, "Image", NA, "Education", "Research", NA, "Education", "Research", "Research", "Education", "Research", "Research", "Image", "Education", "Education", "Research", "Research", "Research", "Research", "Research", "Research", "Research", "Research", "Society")
+
+mit_word_pair <- pairing(mit_word_dictionary, mit_word_category)
+
+print(mit_word_pair)
+
+mit_text <- mit_text %>%
+  mutate(category = sapply(text, classify_text, word_pair = mit_word_pair))
+
+print(mit_text)
+```
+
+# sb
+
+```{r}
+sb_text <- subset(data_posts_content, id == "sb.csv")
+sb_corpus <- corpus_maker(sb_text)
+
+sb_clean_text <- cleanup(sb_corpus, c("new", "—", "will", "week", "can", "amp", "via", "now", "future", "first"))
+
+sb_word_dictionary <- freq_terms(sb_clean_text, 30)
+
+sb_word_category <- c("Image", "Research", "Image", "Image", "Image", NA, "Research", "Image", "Image", "Research", "Education", "Image", "Education", "Image", "Education", "Image", "Society")
+
+sb_word_pair <- pairing(sb_word_dictionary, sb_word_category)
+
+print(sb_word_pair)
+
+sb_text <- sb_text %>%
+  mutate(category = sapply(text, classify_text, word_pair = sb_word_pair))
+
+print(sb_text)
+```
+
+# stanford
+
+```{r}
+stanford_text <- subset(data_posts_content, id == "stanford.csv")
+stanford_corpus <- corpus_maker(stanford_text)
+
+stanford_clean_text <- cleanup(stanford_corpus, c("new", "will"))
+
+stanford_word_dictionary <- freq_terms(stanford_clean_text, 25)
+
+stanford_word_category <- c("Image", "Image", "Research", "Education", NA)
+
+stanford_word_pair <- pairing(stanford_word_dictionary, stanford_word_category)
+
+print(stanford_word_pair)
+
+stanford_text <- stanford_text %>%
+  mutate(category = sapply(text, classify_text, word_pair = stanford_word_pair))
+
+print(stanford_text)
+```
+
+# trinity
+
+```{r}
+trinity_text <- subset(data_posts_content, id == "trinity.csv")
+trinity_corpus <- corpus_maker(trinity_text)
+
+trinity_clean_text <- cleanup(trinity_corpus, c("amp", "read", "new", "can", "will", "week", "work", "great", "day", "visit", "irish", "first", "led", "congratulations"))
+
+trinity_word_dictionary <- freq_terms(trinity_clean_text, 40)
+
+trinity_word_category <- c("Image", "Education", "Research", "Image", "Research", "Image", "Research", "Society", "Society", "Education", "Engagement", "Engagement", "Education", "Image", "Education", "Image", "Research")
+
+trinity_word_pair <- pairing(trinity_word_dictionary, trinity_word_category)
+
+print(trinity_word_pair)
+
+trinity_text <- trinity_text %>%
+  mutate(category = sapply(text, classify_text, word_pair = trinity_word_pair))
+
+print(trinity_text)
+```
+
+# wv
+
+```{r}
+wv_text <- subset(data_posts_content, id == "wv.csv")
+wv_corpus <- corpus_maker(wv_text)
+
+wv_clean_text <- cleanup(wv_corpus, c("💛💙", "🙌", "👉", "happy", "day", "see", "week", "great", "can", "will", "well", "know", "new", "now", "get", "just"))
+
+wv_word_dictionary <- freq_terms(wv_clean_text, 40)
+
+wv_word_category <- c(NA, "Image", "Image", NA, "Image", "Image", "Engagement", "Education", "Education", "Education", NA)
+
+wv_word_pair <- pairing(wv_word_dictionary, wv_word_category)
+
+print(wv_word_pair)
+
+wv_text <- wv_text %>%
+  mutate(category = sapply(text, classify_text, word_pair = wv_word_pair))
+
+print(wv_text)
+```
+
+# yale
+
+```{r}
+yale_text <- subset(data_posts_content, id == "yale.csv")
+yale_corpus <- corpus_maker(yale_text)
+
+yale_clean_text <- cleanup(yale_corpus, c("new", "—", "will", "can", "'", "first", "work", "read", "help", "year"))
+
+yale_word_dictionary <- freq_terms(yale_clean_text, 70)
+
+yale_word_category <- c("Research", "Education", "Education", NA, "Research", "Research", "Research", "Research", "Education", "Image", "Research", "Education", "Image", "Research", NA, "Research", "Image", "Image", "Research", "Image", "Research", "Society", "Research", "Society", "Society")
+
+yale_word_pair <- pairing(yale_word_dictionary, yale_word_category)
+
+print(yale_word_pair)
+
+yale_text <- yale_text %>%
+  mutate(category = sapply(text, classify_text, word_pair = yale_word_pair))
+
+print(yale_text)
+```
+

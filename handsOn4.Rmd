@@ -17,6 +17,9 @@ HTML preview *Ctrl+Shift+K*
 library(tm)
 library(text2vec)
 library(textstem)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
 ```
 
 1. Using the functions VectorSource() and Corpus(), start by creating a corpus with three “documents” containing the following text:
@@ -31,6 +34,7 @@ docs <- c("Mining is important for finding gold", "Classification and regression
 vc <- VectorSource(docs)
 corpus <- Corpus(vc)
 dtm <- DocumentTermMatrix(corpus)
+print(dtm)
 ```
 
 
@@ -218,7 +222,7 @@ inspect(head(acq))
 ```
 
 ```{r}
-# b) Define a function cleanup() that, given a corpus, transforms every letters to lower case, removes numbers, removes stopwords in English, removes punctuation and strips white spaces Apply the defined function to the acq corpus. For this corpus remove also the extra word "said".
+# b) Define a function cleanup() that, given a corpus, transforms every letters to lower case, removes numbers, removes stopwords in English, removes punctuation and strips white spaces. Apply the defined function to the acq corpus. For this corpus remove also the extra word "said".
 
 cleanup <- function(docs, spec.words=NULL){
   # lowercase
@@ -251,6 +255,150 @@ wordcloud(acq1)
 
 ```{r}
 # c) Transform the collection of documents into a Document Term Matrix
+dtm <- DocumentTermMatrix(acq1)
+dtm
+```
 
+```{r}
+# d) 
+mdf <- as_tibble(as.matrix(dtm))
+
+mdf.freq <- mdf %>%
+  select(findFreqTerms(dtm, nDocs(dtm)/2)) %>%
+  summarise_all(sum) %>%
+  gather() %>%
+  arrange(desc(value))
+
+  mdf.freq$key <- 
+    factor(mdf.freq$key,
+           levels = mdf.freq$key[order(mdf.freq$value)])
+  
+  ggplot(mdf.freq, aes(x=key, y=value)) +
+    geom_bar(stat="identity") +
+    labs(x="terms", y="freq") + coord_flip()
+  
+  freq = data.frame(sort(colSums(as.matrix(dtm)),
+                         decreasing = TRUE))
+  
+  wordcloud(rownames(freq), freq[,1],
+            max.words = 50, colors = brewer.pal(3, "Dark2"))
+  
+```
+
+```{r}
+# e)
+DistM <- dist(as.matrix(dtm))
+Tree <- hclust(DistM)
+plot(Tree)
+```
+
+```{r}
+# f)
+```
+
+```{r}
+# g)
+h <- hclust(DistM, method = "ward.D")
+plot(h)
+
+# h)
+ClustKey <- cutree(h, 3)
+ClustKey
+rect.hclust(h,3)
+```
+
+```{r}
+# i)
+c1 <- dtm[ClustKey==1,]
+c2 <- dtm[ClustKey==2,]
+c3 <- dtm[ClustKey==3,]
+
+plot.wordcloud <- function(dtmc) {
+  mdf.c <- as_tibble(as.matrix(dtmc)) %>%
+    summarise_all(sum) %>%
+    gather() %>%
+    arrange(desc(value))
+    wordcloud(mdf.c$key, mdf.c$value, min.freq = 5)
+}
+
+par(mfrow=c(1,3))
+plot.wordcloud(c1)
+plot.wordcloud(c2)
+plot.wordcloud(c3)
+par(mfrow=c(1,1))
+```
+
+# 4.2.5
+
+```{r}
+data(crude)
+data(acq)
+docs <- c(acq, crude)
+```
+
+```{r}
+# a)
+cleanup <- function(docs, spec.words=NULL){
+  # lowercase
+  docs <- tm_map(docs, content_transformer(tolower))
+  # rm numbers
+  docs <- tm_map(docs, removeNumbers)
+  # rm english common stopWords
+  docs <- tm_map(docs, removeWords, stopwords("english"))
+  # if stopwords are specified as a character vector
+  if(!is.null(spec.words))
+    docs <- tm_map(docs, removeWords, spec.words)
+  # rm punctuations
+  docs <- tm_map(docs, removePunctuation)
+  # rm extra white spaces
+  docs <- tm_map(docs, stripWhitespace)
+  # text stemming
+  docs <- tm_map(docs, stemDocument)
+  
+  docs
+}
+
+docs <- cleanup(docs, c("said", "reuters", "reuter"))
+```
+
+```{r}
+# b)
+dtm <- DocumentTermMatrix(docs)
+```
+
+```{r}
+# c)
+dtm <- removeSparseTerms(dtm, 0.8)
+```
+
+```{r}
+# d)
+dat <- cbind(data.frame(as.matrix(dtm),
+                        class=as.factor(c(rep("acq", 50), rep("crude", 20)))))
+
+dat
+```
+
+```{r}
+# e)
+library(e1071)
+library(performanceEstimation)
+
+exp <- performanceEstimation(
+  PredTask(class ~., dat),
+  c(workflow(learner="naiveBayes"),
+    workflowVariants(learner="svm",
+                     learner.pars=
+                       list(kernel=c("linear",
+                                     "radial")))),
+  EstimationTask(metrics="err", method=CV())
+)
+```
+
+```{r}
+# f)
+summary(exp)
+
+plot(exp)
 ```
 
