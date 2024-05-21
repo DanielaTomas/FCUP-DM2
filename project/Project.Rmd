@@ -29,7 +29,7 @@ library(syuzhet)
 # Data Import
 
 ```{r}
-data_posts <- read.csv("~/4year/2semester/dtII/CSVs/HEIs.csv",
+data_posts <- read.csv("~/4year/2semester/dtII/CSVs/HEIs.csv",     # Place here your path to file
                  colClasses = c(tweet_id = "character"))
 
 # Modifying created_at type so that attribute can be used more easily 
@@ -40,7 +40,7 @@ data_posts$created_at <- as.POSIXct(data_posts$created_at,
 summary(data_posts)
 ```
 
-# Initial Data Preparation
+# Data Pre-Processing
 
 ```{r}
 # Count of how many entries each HEI has
@@ -50,13 +50,13 @@ number_posts <- data_posts %>%
 number_posts
 ```
 
-# Since complutense only has 1 entry we can't learn anything from it, so we removed it
+### Since complutense only has 1 entry we can't learn anything from it, so we removed it
 
 ```{r}
 data_posts <- data_posts[data_posts$id != "complutense.csv", ]
 ```
 
-# Visualization of all posts, just tweets and just replies
+### Visualization of all posts, just tweets and just replies
 
 ```{r}
 number_posts <- data_posts %>%
@@ -73,7 +73,7 @@ print(number_tweets)
 print(number_replies)
 ```
 
-# Calculating the percentage of tweets and replies based on all posts
+### Calculating the percentage of tweets and replies based on all posts
 
 ```{r}
 # Merging the counts of tweets and replies with the count of posts
@@ -91,9 +91,9 @@ data_ratio$percentage_replies[is.na(data_ratio$percentage_replies)] <- 0
 print(data_ratio)
 ```
 
-# NA removal
+## NA removal
 
-# Function to visualize the number of NAs in all columns
+### Function to visualize the number of NAs in all columns
 
 ```{r}
 na_count <- function(){
@@ -107,7 +107,7 @@ na_count <- function(){
 }
 ```
 
-# Calculations of view, favourite, retweet and reply percentiles and visualization of NAs in all columns
+### Calculations of view, favourite, retweet and reply percentiles and visualization of NAs in all columns
 
 ```{r}
 data_posts <- data_posts %>%
@@ -126,7 +126,7 @@ data_percentile <- data_posts[, c("id", "view_percentile", "favorite_percentile"
 print(data_percentile)
 ```
 
-# Calculation of the maximum number of views for each HEI
+### Calculation of the maximum number of views for each HEI
 
 ```{r}
 max_view_counts <- tapply(data_posts$view_count, data_posts$id, max, na.rm = TRUE)
@@ -134,7 +134,7 @@ max_view_counts <- tapply(data_posts$view_count, data_posts$id, max, na.rm = TRU
 print(max_view_counts)
 ```
 
-# Removal of NAs
+### Removal of NAs
 
 ```{r}
 # From view count
@@ -150,13 +150,15 @@ data_posts$view_percentile <- ifelse(
   data_posts$view_percentile)
 ```
 
-# Visualization of NAs in all columns
+### Visualization of NAs in all columns
 
 ```{r}
 na_count()
 ```
 
-# Function to calculate average posts
+# Data Processing
+
+### Function to calculate average posts
 
 ```{r}
 average_posts <- function(timeframe){
@@ -185,7 +187,7 @@ posts_per_day <- average_posts("days")
 posts_per_week <- average_posts("weeks")
 ```
 
-# Plot for the average number of posts per day for each HEI
+### Plot for the average number of posts per day for each HEI
 
 ```{r}
 barplot(posts_per_day$avg_posts_per_days,
@@ -204,7 +206,7 @@ text(x = barplot(posts_per_day$avg_posts_per_days, plot = FALSE),
      pos = 3)
 ```
 
-# Plot for the average number of posts per week for each HEI
+### Plot for the average number of posts per week for each HEI
 
 ```{r}
 barplot(posts_per_week$avg_posts_per_weeks,
@@ -222,7 +224,7 @@ text(x = barplot(posts_per_week$avg_posts_per_weeks, plot = FALSE),
      pos = 3)
 ```
 
-# Defining the intervals of time for the academic year
+### Defining the intervals of time for the academic year
 
 ```{r}
 intervals <- list(
@@ -232,7 +234,7 @@ intervals <- list(
 )
 ```
 
-# Function to check if a date falls within a given interval of time and apply appropriate Boolean
+### Function to check if a date falls within a given interval of time and apply appropriate Boolean
 
 ```{r}
 check_interval <- function(date) {
@@ -252,7 +254,7 @@ data_posts$academic_year <- sapply(data_posts$created_at, check_interval)
 print(data.frame(id = data_posts$id, academic_year = data_posts$academic_year))
 ```
 
-# Function to count number of posts and average per day during academic time and vacation time
+### Function to count number of posts and average per day during academic time and vacation time
 
 ```{r}
 analyze_posts <- function(academic_year_filter) {
@@ -289,7 +291,7 @@ data_posts_academic <- analyze_posts(TRUE)
 data_posts_vacations <- analyze_posts(FALSE)
 ```
 
-# Plot for the average number of posts during academic time for each HEI
+### Plot for the average number of posts during academic time for each HEI
 
 ```{r}
 barplot(data_posts_academic$avg_posts_in_academic_time,
@@ -307,7 +309,7 @@ text(x = barplot(data_posts_academic$avg_posts_in_academic_time, plot = FALSE),
      pos = 3)
 ```
 
-# Plot for the average number of posts during vacation time for each HEI
+### Plot for the average number of posts during vacation time for each HEI
 
 ```{r}
 barplot(data_posts_vacations$avg_posts_in_vacation_time,
@@ -325,7 +327,7 @@ text(x = barplot(data_posts_vacations$avg_posts_in_vacation_time, plot = FALSE),
      pos = 3)
 ```
 
-# Data preparation for dates 
+## Data preparation for dates 
 
 ```{r}
 # Creating new table that contains a new column for the day of the week
@@ -362,7 +364,7 @@ average_number_posts_per_day <- number_posts_per_day %>%
 print(number_posts_days)
 ```
 
-# Highest and lowest posts
+## Highest and lowest posts
 
 ```{r}
 # Finding the HEI with the lowest count of posts per day
@@ -384,7 +386,7 @@ high_low_HEI <- bind_rows(lowest_count, highest_count) %>%
 print(high_low_HEI)
 ```
 
-# Plot for the highest and lowest count of posts per day for each day of the week
+### Plot for the highest and lowest count of posts per day for each day of the week
 
 ```{r}
 ggplot(high_low_HEI, aes(x = day_of_week, y = count, fill = id)) +
@@ -400,7 +402,7 @@ ggplot(high_low_HEI, aes(x = day_of_week, y = count, fill = id)) +
   theme(legend.title = element_blank())
 ```
 
-# Average of posts
+## Average of posts
 
 ```{r}
 # Finding the HEI with lowest and highest averaged count of posts per day
@@ -412,7 +414,7 @@ high_low_average_HEIs <- average_number_posts_per_day %>%
 print(high_low_average_HEIs)
 ```
 
-# Plot for the highest and lowest average count of posts per day for each day of the week
+### Plot for the highest and lowest average count of posts per day for each day of the week
 
 ```{r}
 ggplot(high_low_average_HEIs, aes(x = day_of_week, y = average_count, fill = id)) +
@@ -428,7 +430,7 @@ ggplot(high_low_average_HEIs, aes(x = day_of_week, y = average_count, fill = id)
   theme(legend.title = element_blank())
 ```
 
-# Favourite hour and day
+## Favourite hour and day
 
 ```{r}
 favourite_day_hei <- number_posts_days %>%
@@ -440,22 +442,37 @@ print(favourite_day_hei)
 ```
 
 ```{r}
+# Calculating the number of posts per hour
 number_posts_hours <- data_posts_days %>%
   group_by(id, created_hour) %>%
   summarise(count = n()) %>%
   ungroup()
 
+# Identifying the favorite hour for each HEI
 favourite_hour_hei <- number_posts_hours %>%
   group_by(id) %>%
   top_n(1, count) %>%
   arrange(id)
 
+# Adding new columns to categorize the hours and assign numerical value for clustering
+favourite_hour_hei <- favourite_hour_hei %>%
+  mutate(time_of_day = case_when(
+    created_hour >= 5 & created_hour < 12 ~ "Morning",
+    created_hour >= 12 & created_hour < 18 ~ "Afternoon",
+    TRUE ~ "Night"
+  ),
+  time_of_day_value = case_when(
+    created_hour >= 5 & created_hour < 12 ~ 1,
+    created_hour >= 12 & created_hour < 18 ~ 3,
+    TRUE ~ 5
+  ))
+
 print(favourite_hour_hei)
 ```
 
-# Heatmaps
+## Heatmaps
 
-# Function to plot heatmap for various HEIs
+### Function to plot heatmap for various HEIs
 
 ```{r}
 heatmap_maker <- function(target_id){
@@ -478,7 +495,7 @@ heatmap_maker <- function(target_id){
 }
 ```
 
-# Plot of heatmap for each HEI
+### Plot of heatmap for each HEI
 
 ```{r}
 heatmap_maker("duke.csv")
@@ -495,7 +512,7 @@ heatmap_maker("wv.csv")
 heatmap_maker("yale.csv")
 ```
 
-# Hashtags
+## Hashtags
 
 ```{r}
 # Transforming empty strings into NA
@@ -512,7 +529,7 @@ hashtags <- data_posts %>%
 print(hashtags)
 ```
 
-# Plot for the count of unique hashtags for each HEI
+### Plot for the count of unique hashtags for each HEI
 
 ```{r}
 barplot(hashtags$unique_hashtags,
@@ -530,7 +547,7 @@ text(x = barplot(hashtags$unique_hashtags, plot = FALSE),
      pos = 3)
 ```
 
-# Plot for the usage of hashtag for each HEI
+### Plot for the usage of hashtag for each HEI
 
 ```{r}
 barplot(hashtags$hashtag_percentage,
@@ -548,7 +565,7 @@ text(x = barplot(hashtags$hashtag_percentage, plot = FALSE),
      pos = 3)
 ```
 
-# URL usage
+## URL usage
 
 ```{r}
 # Transforming empty strings into NA
@@ -564,7 +581,7 @@ url_usage <- data_posts %>%
 print(url_usage)
 ```
 
-# Plot for the usage of hashtag for each HEI
+### Plot for the usage of hashtag for each HEI
 
 ```{r}
 barplot(url_usage$url_percentage,
@@ -582,7 +599,7 @@ text(x = barplot(url_usage$url_percentage, plot = FALSE),
      pos = 3)
 ```
 
-# Text
+## Text
 
 ```{r}
 data_posts_content <- data_posts %>%
@@ -601,7 +618,7 @@ data_posts_content_metrics <- data_posts_content %>%
 print(data_posts_content_metrics)
 ```
 
-# Plot for the average, maximum and minimum values of words for each HEI
+### Plot for the average, maximum and minimum values of words for each HEI
 
 ```{r}
 ggplot(data_posts_content_metrics, aes(x = id, y = average_num_words)) +
@@ -616,95 +633,9 @@ ggplot(data_posts_content_metrics, aes(x = id, y = average_num_words)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
-# Clusters
-
-```{r}
-# Creating table for cluster algorithms
-
-# Joining attribute percentage_tweets (percentage of tweets out of all posts) and percentage_replies (percentage of replies out of all posts) from number_posts also adding unique_hashtags (number of unique hashtags) and hashtag_percentage (percentage of posts that contain a hashtag) from hashtags, per HEI
-cluster_table <- merge(select(hashtags, id, unique_hashtags, hashtag_percentage), select(data_ratio, id, percentage_tweets, percentage_replies), by = "id", all=TRUE)
-
-# Joining attribute avg_posts_per_days (average of posts per day) from posts_per_day per HEI
-cluster_table <- merge(cluster_table, select(posts_per_day, id, avg_posts_per_days), by = "id", all=TRUE)
-
-# Joining attribute avg_posts_per_weeks (average of posts per week) from posts_per_week per HEI
-cluster_table <- merge(cluster_table, select(posts_per_week, id, avg_posts_per_weeks), by = "id", all=TRUE)
-
-# Joining attribute avg_posts_in_academic_time (average of posts during academic time)  from data_posts_academic per HEI
-cluster_table <- merge(cluster_table, select(data_posts_academic, id, avg_posts_in_academic_time), by = "id", all=TRUE)
-
-# Joining attribute avg_posts_in_vacation_time (average of posts during vacation time) from data_posts_vacations per HEI
-cluster_table <- merge(cluster_table, select(data_posts_vacations, id, avg_posts_in_vacation_time), by = "id", all=TRUE)
-
-# Joining attribute created_hour (hour where every HEI made more posts) from favourite_hour_hei per HEI
-cluster_table <- merge(cluster_table, select(favourite_hour_hei, id, created_hour), by = "id", all=TRUE)
-
-# Joining attribute url_percentage (percentage of posts that contain an url) from url_usage per HEI
-cluster_table <- merge(cluster_table, select(url_usage, id, url_percentage), by = "id", all=TRUE)
-
-# Joining attribute average_num_words (average number of words in the posts) from data_posts_content_metrics per HEI
-cluster_table <- merge(cluster_table, select(data_posts_content_metrics, id, average_num_words), by = "id", all=TRUE)
-
-print(cluster_table)
-```
-
-# Function for cluster method
-
-```{r}
-cluster_maker <- function(num_clusters, table){
-  # Excluding id column for clustering
-  cluster_data <- select(table, -id)
-    
-  # Scaling the data for kmeans method
-  scaled_data <- scale(cluster_data)
-  
-  kmeans_model <- kmeans(scaled_data, centers = num_clusters, nstart = 10)
-
-  # Extract cluster assignments
-  cluster_assignments <- kmeans_model$cluster
-  
-  # Create a data frame combining original data with cluster assignments
-  clustered_data <- cbind(cluster_table$id, cluster_data, cluster = cluster_assignments)
-  
-  clustered_data <- clustered_data[, c("cluster_table$id", "cluster")]
-  
-  print(clustered_data)
-}
-```
-
-# Function to discover best number of clusters
-
-```{r}
-elbow_maker <- function(table){
-  cluster_data <- select(table, -id)
-  scaled_data <- scale(cluster_data)
-  
-  wss <- vector()
-  range <- 1:10
-  
-  for (k in range) {
-    kmeans_model <- kmeans(scaled_data, centers = k, nstart = 10)
-    wss[k] <- kmeans_model$tot.withinss
-  }
-  
-  elbow_df <- data.frame(k = range, WSS = wss)
-  ggplot(elbow_df, aes(x = k, y = WSS)) +
-    geom_line() +
-    geom_point() +
-    labs(x = "Number of Clusters", y = "Within-Cluster Sum of Squares (WCSS)",
-         title = "Elbow Method for Optimal k") +
-    theme_minimal()
-}
-```
-
-# Plot of Elbow Method and selection of best number of cluster to view how HEIs are grouped
-
-```{r}
-elbow_maker(cluster_table)
-cluster_maker(3, cluster_table)
-```
-
 # Posts Classification
+
+## Function to cleanup text
 
 ```{r}
 cleanup <- function(docs, spec.words=NULL){
@@ -728,6 +659,8 @@ cleanup <- function(docs, spec.words=NULL){
 }
 ```
 
+## Fucntion to pair words
+
 ```{r}
 pairing <- function(word_dict, paired_words) {
   if (nrow(word_dict) != length(paired_words)) {
@@ -739,6 +672,8 @@ pairing <- function(word_dict, paired_words) {
   return(result)
 }
 ```
+
+## Function to classify text
 
 ```{r}
 classify_text <- function(text, word_pair) {
@@ -760,6 +695,8 @@ classify_text <- function(text, word_pair) {
 }
 ```
 
+## Function to create corpus
+
 ```{r}
 corpus_maker <- function(text) {
   texts <- text$text
@@ -769,6 +706,8 @@ corpus_maker <- function(text) {
   return(corpus)
 }
 ```
+
+## Function to find frequent terms in texts
 
 ```{r}
 freq_terms <- function(clean_text, number) {
@@ -797,7 +736,7 @@ freq_terms <- function(clean_text, number) {
 }
 ```
 
-# Duke
+### Duke
 
 ```{r}
 duke_text <- subset(data_posts_content, id == "duke.csv")
@@ -820,7 +759,7 @@ duke_text <- duke_text %>%
 print(duke_text)
 ```
 
-# epfl
+### epfl
 
 ```{r}
 epfl_text <- subset(data_posts_content, id == "epfl.csv")
@@ -843,7 +782,7 @@ epfl_text <- epfl_text %>%
 print(epfl_text)
 ```
 
-# goe
+### goe
 
 ```{r}
 goe_text <- subset(data_posts_content, id == "goe.csv")
@@ -866,7 +805,7 @@ goe_text <- goe_text %>%
 print(goe_text)
 ```
 
-# harvard
+### harvard
 
 ```{r}
 harvard_text <- subset(data_posts_content, id == "harvard.csv")
@@ -888,7 +827,7 @@ harvard_text <- harvard_text %>%
 print(harvard_text)
 ```
 
-# leicester
+### leicester
 
 ```{r}
 leicester_text <- subset(data_posts_content, id == "leicester.csv")
@@ -910,7 +849,7 @@ leicester_text <- leicester_text %>%
 print(leicester_text)
 ```
 
-# manchester
+### manchester
 
 ```{r}
 manchester_text <- subset(data_posts_content, id == "manchester.csv")
@@ -932,7 +871,7 @@ manchester_text <- manchester_text %>%
 print(manchester_text)
 ```
 
-# mit
+### mit
 
 ```{r}
 mit_text <- subset(data_posts_content, id == "mit.csv")
@@ -954,7 +893,7 @@ mit_text <- mit_text %>%
 print(mit_text)
 ```
 
-# sb
+### sb
 
 ```{r}
 sb_text <- subset(data_posts_content, id == "sb.csv")
@@ -976,7 +915,7 @@ sb_text <- sb_text %>%
 print(sb_text)
 ```
 
-# stanford
+### stanford
 
 ```{r}
 stanford_text <- subset(data_posts_content, id == "stanford.csv")
@@ -998,7 +937,7 @@ stanford_text <- stanford_text %>%
 print(stanford_text)
 ```
 
-# trinity
+### trinity
 
 ```{r}
 trinity_text <- subset(data_posts_content, id == "trinity.csv")
@@ -1020,7 +959,7 @@ trinity_text <- trinity_text %>%
 print(trinity_text)
 ```
 
-# wv
+### wv
 
 ```{r}
 wv_text <- subset(data_posts_content, id == "wv.csv")
@@ -1042,7 +981,7 @@ wv_text <- wv_text %>%
 print(wv_text)
 ```
 
-# yale
+### yale
 
 ```{r}
 yale_text <- subset(data_posts_content, id == "yale.csv")
@@ -1066,7 +1005,7 @@ print(yale_text)
 
 # Sentiment Analysis
 
-# Function for emotions
+### Function for emotions
 
 ```{r}
 emotions_maker <- function(texts, hei_name){
@@ -1096,7 +1035,7 @@ emotions_maker <- function(texts, hei_name){
 }
 ```
 
-# Duke
+### Duke
 
 ```{r}
 duke_text$sentiment <- round(get_sentiment(duke_text$text), 2)
@@ -1108,7 +1047,7 @@ print(duke_text)
 emotions_maker(duke_text$text, "duke")
 ```
 
-# epfl
+### epfl
 
 ```{r}
 epfl_text$sentiment <- round(get_sentiment(epfl_text$text), 2)
@@ -1120,7 +1059,7 @@ print(epfl_text)
 emotions_maker(epfl_text$text, "epfl")
 ```
 
-# goe
+### goe
 
 ```{r}
 goe_text$sentiment <- round(get_sentiment(goe_text$text), 2)
@@ -1132,7 +1071,7 @@ print(goe_text)
 emotions_maker(goe_text$text, "goe")
 ```
 
-# harvard
+### harvard
 
 ```{r}
 harvard_text$sentiment <- round(get_sentiment(harvard_text$text), 2)
@@ -1144,7 +1083,7 @@ print(harvard_text)
 emotions_maker(harvard_text$text, "harvard")
 ```
 
-# leicester
+### leicester
 
 ```{r}
 leicester_text$sentiment <- round(get_sentiment(leicester_text$text), 2)
@@ -1156,7 +1095,7 @@ print(leicester_text)
 emotions_maker(leicester_text$text, "leicester")
 ```
 
-# manchester
+### manchester
 
 ```{r}
 manchester_text$sentiment <- round(get_sentiment(manchester_text$text), 2)
@@ -1168,7 +1107,7 @@ print(manchester_text)
 emotions_maker(manchester_text$text, "manchester")
 ```
 
-# mit
+### mit
 
 ```{r}
 mit_text$sentiment <- round(get_sentiment(mit_text$text), 2)
@@ -1180,7 +1119,7 @@ print(mit_text)
 emotions_maker(mit_text$text, "mit")
 ```
 
-# sb
+### sb
 
 ```{r}
 sb_text$sentiment <- round(get_sentiment(sb_text$text), 2)
@@ -1192,7 +1131,7 @@ print(sb_text)
 emotions_maker(sb_text$text, "sb")
 ```
 
-# stanford
+### stanford
 
 ```{r}
 stanford_text$sentiment <- round(get_sentiment(stanford_text$text), 2)
@@ -1204,7 +1143,7 @@ print(stanford_text)
 emotions_maker(stanford_text$text, "stanford")
 ```
 
-# trinity
+### trinity
 
 ```{r}
 trinity_text$sentiment <- round(get_sentiment(trinity_text$text), 2)
@@ -1216,7 +1155,7 @@ print(trinity_text)
 emotions_maker(trinity_text$text, "trinity")
 ```
 
-# wv
+### wv
 
 ```{r}
 wv_text$sentiment <- round(get_sentiment(wv_text$text), 2)
@@ -1228,7 +1167,7 @@ print(wv_text)
 emotions_maker(wv_text$text, "wv")
 ```
 
-# yale
+### yale
 
 ```{r}
 yale_text$sentiment <- round(get_sentiment(yale_text$text), 2)
@@ -1238,4 +1177,159 @@ print(yale_text)
 
 ```{r}
 emotions_maker(yale_text$text, "yale")
+```
+
+### Creation of average sentiment for each HEI
+
+```{r}
+# Combine all the sentiment scores into one data frame
+all_sentiments <- rbind(
+    duke_text[, c("id", "sentiment")],
+    epfl_text[, c("id", "sentiment")],
+    goe_text[, c("id", "sentiment")],
+    harvard_text[, c("id", "sentiment")],
+    leicester_text[, c("id", "sentiment")],
+    manchester_text[, c("id", "sentiment")],
+    mit_text[, c("id", "sentiment")],
+    sb_text[, c("id", "sentiment")],
+    stanford_text[, c("id", "sentiment")],
+    trinity_text[, c("id", "sentiment")],
+    wv_text[, c("id", "sentiment")],
+    yale_text[, c("id", "sentiment")]
+)
+
+# Calculate the average sentiment for each HEI
+hei_average_sentiments <- aggregate(sentiment ~ id, data = all_sentiments, FUN = mean) %>%
+    rename(average_sentiment = sentiment)
+
+# Print the table
+print(hei_average_sentiments)
+```
+
+# Clusters
+
+### Function for cosine matrix
+
+```{r}
+cosine_matrix_maker <- function(table){
+  numerical_columns <- table %>%
+    select(-id)
+  
+  # Normalizing columns
+  normalized_columns <- as.data.frame(scale(numerical_columns))
+  
+  # Transposing the data to compute similarity between columns
+  transposed_data <- t(normalized_columns)
+  
+  # Computing the cosine similarity matrix
+  similarity_matrix <- as.matrix(proxy::dist(transposed_data, method = "cosine"))
+  
+  # Converting distance to similarity
+  similarity_matrix <- 1 - similarity_matrix
+  
+  # Print the similarity matrix
+  print(similarity_matrix)
+}  
+```
+
+### Creating table for cluster algorithms
+
+```{r}
+# Joining attribute percentage_tweets (percentage of tweets out of all posts) and percentage_replies (percentage of replies out of all posts) from number_posts also adding unique_hashtags (number of unique hashtags) and hashtag_percentage (percentage of posts that contain a hashtag) from hashtags, per HEI
+cluster_table <- merge(select(hashtags, id, unique_hashtags, hashtag_percentage), select(data_ratio, id, percentage_tweets, percentage_replies), by = "id", all=TRUE)
+
+# Joining attribute avg_posts_per_days (average of posts per day) from posts_per_day per HEI
+cluster_table <- merge(cluster_table, select(posts_per_day, id, avg_posts_per_days), by = "id", all=TRUE)
+
+# Joining attribute avg_posts_per_weeks (average of posts per week) from posts_per_week per HEI
+cluster_table <- merge(cluster_table, select(posts_per_week, id, avg_posts_per_weeks), by = "id", all=TRUE)
+
+# Joining attribute avg_posts_in_academic_time (average of posts during academic time)  from data_posts_academic per HEI
+cluster_table <- merge(cluster_table, select(data_posts_academic, id, avg_posts_in_academic_time), by = "id", all=TRUE)
+
+# Joining attribute avg_posts_in_vacation_time (average of posts during vacation time) from data_posts_vacations per HEI
+cluster_table <- merge(cluster_table, select(data_posts_vacations, id, avg_posts_in_vacation_time), by = "id", all=TRUE)
+
+# Joining attribute time_of_day_value (numerical value referring to time of day where every HEI made more posts) from favourite_hour_hei per HEI
+cluster_table <- merge(cluster_table, select(favourite_hour_hei, id, time_of_day_value), by = "id", all=TRUE)
+
+# Joining attribute url_percentage (percentage of posts that contain an url) from url_usage per HEI
+cluster_table <- merge(cluster_table, select(url_usage, id, url_percentage), by = "id", all=TRUE)
+
+# Joining attribute average_num_words (average number of words in the posts) from data_posts_content_metrics per HEI
+cluster_table <- merge(cluster_table, select(data_posts_content_metrics, id, average_num_words), by = "id", all=TRUE)
+
+# Joining attribute average_sentiment (average sentiment of posts) from hei_average_sentiments per HEI
+cluster_table <- merge(cluster_table, select(hei_average_sentiments, id, average_sentiment), by = "id", all=TRUE)
+
+print(cluster_table)
+```
+
+```{r}
+cosine_matrix_maker(cluster_table)
+```
+
+### Based on this cosine matrix we decided to remove average_num_words (high similarity to unique_hashtags, hashtag_percentage and url_percentage), unique_hashtags (high similarity to hashtag_percentage and the distances of hashtag_percentage to the other columns is lower) and avg_posts_per_weeks, avg_posts_in_academic_time, avg_posts_in_vacation_time are also all removed (due to their similarity to avg_posts_per_days)
+
+```{r}
+cluster_table <- cluster_table %>%
+  select(-average_num_words, -unique_hashtags, -avg_posts_per_weeks, -avg_posts_in_academic_time, -avg_posts_in_vacation_time)
+
+cosine_matrix_maker(cluster_table)
+```
+
+### Function for cluster method
+
+```{r}
+cluster_maker <- function(num_clusters, table){
+  # Excluding id column for clustering
+  cluster_data <- select(table, -id)
+    
+  # Scaling the data for kmeans method
+  scaled_data <- scale(cluster_data)
+  
+  kmeans_model <- kmeans(scaled_data, centers = num_clusters, nstart = 10)
+
+  # Extracting cluster assignments
+  cluster_assignments <- kmeans_model$cluster
+  
+  # Creating new data frame combining original data with cluster assignments
+  clustered_data <- cbind(cluster_table$id, cluster_data, cluster = cluster_assignments)
+  
+  clustered_data <- clustered_data[, c("cluster_table$id", "cluster")]
+  
+  print(clustered_data)
+}
+```
+
+### Function to discover best number of clusters
+
+```{r}
+elbow_maker <- function(table){
+  cluster_data <- select(table, -id)
+  scaled_data <- scale(cluster_data)
+  
+  wss <- vector()
+  range <- 1:10
+  
+  for (k in range) {
+    kmeans_model <- kmeans(scaled_data, centers = k, nstart = 10)
+    wss[k] <- kmeans_model$tot.withinss
+  }
+  
+  elbow_df <- data.frame(k = range, WSS = wss)
+  ggplot(elbow_df, aes(x = k, y = WSS)) +
+    geom_line() +
+    geom_point() +
+    labs(x = "Number of Clusters", y = "Within-Cluster Sum of Squares (WCSS)",
+         title = "Elbow Method for Optimal k") +
+    theme_minimal()
+}
+```
+
+### Plot of Elbow Method and selection of best number of cluster to view how HEIs are grouped
+
+```{r}
+elbow_maker(cluster_table)
+cluster_maker(4, cluster_table)
 ```
